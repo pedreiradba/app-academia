@@ -1,1967 +1,569 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Plano de Treino e Dieta - Gestão de Alunos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- SDK Oficial do Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
-    :root {
-      --bg-dark: #080c14;
-      --card-bg: #121926;
-      --card-item: #1a2336;
-      --accent-neon: #ccff00;
-      --accent-blue: #38bdf8;
-      --accent-orange: #fb923c;
-      --accent-green: #22c55e;
-      --accent-red: #ef4444;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --border-color: #243047;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: 'Inter', sans-serif;
-      padding: 16px;
-      line-height: 1.4;
-    }
-
-    /* Cabeçalho */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border-color);
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .brand-icon {
-      background-color: var(--accent-neon);
-      color: #000;
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 900;
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-
-    h1 {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 18px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn-action {
-      background-color: #2563eb;
-      color: #fff;
-      border: none;
-      padding: 8px 12px;
-      font-weight: 600;
-      font-size: 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-    }
-
-    .btn-reset {
-      background-color: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-    }
-
-    .btn-reset:hover {
-      color: var(--accent-red);
-      border-color: var(--accent-red);
-    }
-
-    /* Barra de Seleção do Aluno */
-    .student-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 10px 14px;
-      margin-bottom: 12px;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .student-select-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      min-width: 260px;
-    }
-
-    .student-select-group label {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent-blue);
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .student-select {
-      background-color: var(--bg-dark);
-      border: 1px solid var(--border-color);
-      color: #fff;
-      font-weight: 600;
-      font-size: 13px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      outline: none;
-      width: 100%;
-      cursor: pointer;
-    }
-
-    .btn-student-edit {
-      background-color: var(--card-item);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 6px 10px;
-      font-weight: 600;
-      font-size: 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.2s;
-    }
-
-    .btn-student-edit:hover {
-      border-color: var(--accent-blue);
-      color: var(--accent-blue);
-    }
-
-    .btn-student-add {
-      background-color: var(--accent-neon);
-      color: #000;
-      border: none;
-      padding: 7px 12px;
-      font-weight: 700;
-      font-size: 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    /* ABAS PRINCIPAIS (TREINO VS DIETA) */
-    .main-tabs-wrapper {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .main-tab-btn {
-      flex: 1;
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      padding: 12px;
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 800;
-      font-size: 13px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .main-tab-btn:hover {
-      border-color: var(--accent-neon);
-      color: #fff;
-    }
-
-    .main-tab-btn.active {
-      background-color: var(--accent-neon);
-      color: #000;
-      border-color: var(--accent-neon);
-      box-shadow: 0 0 12px rgba(204, 255, 0, 0.25);
-    }
-
-    .main-tab-btn.active-diet {
-      background-color: var(--accent-green);
-      color: #000;
-      border-color: var(--accent-green);
-      box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
-    }
-
-    /* Status Toast */
-    #save-status {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background-color: var(--accent-neon);
-      color: #000;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: 700;
-      font-size: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-      opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.3s ease;
-      z-index: 1000;
-      pointer-events: none;
-    }
-
-    #save-status.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Menus Deslizantes (Semanas e Dias) */
-    .controls-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .selector-group {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      white-space: nowrap;
-      padding: 4px;
-      background-color: var(--card-bg);
-      border-radius: 10px;
-      border: 1px solid var(--border-color);
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-
-    .selector-group::-webkit-scrollbar { display: none; }
-
-    .btn-nav {
-      flex: 0 0 auto;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      padding: 8px 14px;
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 700;
-      font-size: 11px;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-    }
-
-    .btn-nav.active {
-      background-color: var(--accent-neon);
-      color: #000;
-      box-shadow: 0 0 10px rgba(204, 255, 0, 0.25);
-    }
-
-    .btn-day.active {
-      background-color: var(--accent-blue);
-      color: #000;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
-    }
-
-    .btn-diet-day.active {
-      background-color: var(--accent-green);
-      color: #000;
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-    }
-
-    /* Containers */
-    .table-container {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      width: 100%;
-    }
-
-    .day-block {
-      background-color: var(--card-bg);
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      overflow: hidden;
-    }
-
-    .badge-reps {
-      display: inline-block;
-      background-color: rgba(56, 189, 248, 0.12);
-      color: var(--accent-blue);
-      font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      border: 1px solid rgba(56, 189, 248, 0.25);
-    }
-
-    .badge-rest {
-      color: var(--text-muted);
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .badge-time {
-      display: inline-block;
-      background-color: rgba(251, 146, 60, 0.15);
-      color: var(--accent-orange);
-      font-weight: 800;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      border: 1px solid rgba(251, 146, 60, 0.3);
-    }
-
-    .diet-tag {
-      font-size: 11px;
-      color: var(--accent-green);
-      font-weight: 700;
-      margin-top: 3px;
-    }
-
-    .carga-input {
-      background-color: #080c14;
-      border: 1px solid var(--border-color);
-      color: var(--accent-neon);
-      font-family: 'Inter', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      padding: 6px 8px;
-      border-radius: 6px;
-      outline: none;
-      text-align: center;
-      width: 80px;
-    }
-
-    .carga-input:focus { border-color: var(--accent-neon); }
-
-    .item-actions { display: flex; gap: 4px; }
-
-    .btn-icon {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
-      transition: all 0.2s;
-      font-size: 14px;
-    }
-
-    .btn-icon:hover { color: #fff; background-color: rgba(255,255,255,0.1); }
-    .btn-icon.delete:hover { color: var(--accent-red); background-color: rgba(239, 68, 68, 0.15); }
-
-    .btn-add-ex {
-      background-color: rgba(204, 255, 0, 0.08);
-      border: 1px dashed var(--accent-neon);
-      color: var(--accent-neon);
-      padding: 10px;
-      width: 100%;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-add-ex:hover { background-color: rgba(204, 255, 0, 0.18); }
-
-    .btn-add-meal {
-      background-color: rgba(34, 197, 94, 0.08);
-      border: 1px dashed var(--accent-green);
-      color: var(--accent-green);
-      padding: 10px;
-      width: 100%;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-add-meal:hover { background-color: rgba(34, 197, 94, 0.18); }
-
-    /* MODAIS */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(0,0,0,0.8);
-      backdrop-filter: blur(4px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 2000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-    }
-
-    .modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .modal-card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 420px;
-      padding: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    }
-
-    .modal-card h3 {
-      font-family: 'Montserrat', sans-serif;
-      margin-bottom: 16px;
-      color: var(--accent-neon);
-      font-size: 16px;
-    }
-
-    .form-group { margin-bottom: 12px; }
-
-    .form-group label {
-      display: block;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      font-weight: 700;
-    }
-
-    .form-control {
-      width: 100%;
-      background-color: var(--bg-dark);
-      border: 1px solid var(--border-color);
-      color: #fff;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 13px;
-      outline: none;
-      font-family: inherit;
-    }
-
-    textarea.form-control {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    .form-control:focus { border-color: var(--accent-blue); }
-
-    .modal-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 20px;
-    }
-
-    .btn-modal {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 12px;
-      cursor: pointer;
-      border: none;
-    }
-
-    .btn-modal-cancel {
-      background: transparent;
-      color: var(--text-muted);
-      border: 1px solid var(--border-color);
-    }
-
-    .btn-modal-save {
-      background-color: var(--accent-neon);
-      color: #000;
-    }
-
-    .btn-print-option {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background-color: var(--card-item);
-      color: #fff;
-      font-weight: 700;
-      font-size: 13px;
-      cursor: pointer;
-      text-align: left;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: all 0.2s;
-      margin-bottom: 8px;
-    }
-
-    .btn-print-option:hover {
-      border-color: var(--accent-neon);
-      background-color: rgba(204, 255, 0, 0.1);
-    }
-
-    /* ADAPTAÇÃO MOBILE (< 768px) */
-    @media screen and (max-width: 768px) {
-      .day-block {
-        background-color: transparent;
-        border: none;
-        overflow: visible;
-      }
-
-      table, thead, tbody, th, td, tr { display: block; }
-      thead { display: none; }
-
-      tbody {
-        background-color: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 12px;
-        margin-bottom: 16px;
-      }
-
-      .day-cell {
-        background-color: #1a2336 !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 8px;
-        padding: 10px 12px !important;
-        margin-bottom: 10px;
-        order: -1;
-      }
-
-      .day-title {
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 800;
-        font-size: 15px;
-        color: var(--accent-neon);
-        text-transform: uppercase;
-      }
-
-      .day-focus {
-        color: var(--accent-blue);
-        font-weight: 700;
-        font-size: 12px;
-        margin-top: 2px;
-      }
-
-      tr {
-        background-color: var(--card-item);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 8px;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-        position: relative;
-      }
-
-      td { padding: 0 !important; border: none !important; }
-
-      .ex-cell, .meal-cell {
-        width: 100%;
-        font-weight: 600;
-        font-size: 13.5px;
-        color: #fff;
-        padding-right: 50px !important;
-      }
-
-      .reps-cell, .rest-cell, .time-cell { display: inline-flex; align-items: center; }
-
-      .carga-cell {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .carga-cell::before {
-        content: "Carga:";
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 600;
-      }
-
-      .actions-cell {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-      }
-
-      .note-cell, .details-cell {
-        width: 100%;
-        margin-top: 6px;
-        padding: 10px 12px !important;
-        background-color: #1a2336 !important;
-        border-left: 3px solid var(--accent-blue) !important;
-        border-radius: 6px;
-        font-size: 12px;
-        color: var(--text-muted);
-        order: 99;
-      }
-
-      .details-cell {
-        border-left: 3px solid var(--accent-green) !important;
-        color: #f1f5f9;
-        font-size: 12.5px;
-        line-height: 1.5;
-      }
-    }
-
-    /* ESTILO DESKTOP (> 768px) */
-    @media screen and (min-width: 769px) {
-      body { padding: 24px; }
-
-      table { width: 100%; border-collapse: collapse; }
-
-      th {
-        background-color: #0f172a;
-        color: var(--accent-neon);
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 800;
-        font-size: 11px;
-        text-transform: uppercase;
-        padding: 12px;
-        border-bottom: 2px solid var(--border-color);
-        text-align: left;
-      }
-
-      td {
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border-color);
-        font-size: 13px;
-        vertical-align: middle;
-      }
-
-      .day-cell {
-        background-color: #111827;
-        vertical-align: top;
-        padding-top: 16px;
-        border-right: 1px solid var(--border-color);
-        width: 16%;
-      }
-
-      .time-cell { width: 10%; }
-      .meal-cell { width: 22%; font-weight: 700; color: #fff; }
-      .details-cell { width: 44%; line-height: 1.5; }
-
-      .ex-cell { width: 30%; }
-      .reps-cell { width: 15%; }
-      .rest-cell { width: 12%; }
-      .carga-cell { width: 10%; }
-      .actions-cell { width: 6%; }
-
-      .day-title {
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 800;
-        font-size: 15px;
-        color: #fff;
-      }
-
-      .day-focus {
-        color: var(--accent-blue);
-        font-weight: 700;
-        font-size: 12px;
-      }
-
-      .note-cell {
-        width: 12%;
-        vertical-align: top;
-        padding-top: 16px;
-        background-color: #111827;
-        border-left: 1px solid var(--border-color);
-        font-size: 12px;
-        color: var(--text-muted);
-        font-style: italic;
-      }
-    }
-
-    /* FORMATO IMPRESSÃO / PDF */
-    @media print {
-      @page {
-        size: A4 portrait;
-        margin: 8mm 10mm;
-      }
-
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-
-      body {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        font-size: 8pt !important;
-        line-height: 1.2 !important;
-      }
-
-      .no-print, 
-      .actions-cell, 
-      .btn-add-ex, 
-      .btn-add-meal,
-      .item-actions, 
-      .student-bar, 
-      .controls-wrapper, 
-      .main-tabs-wrapper,
-      .header,
-      .modal-overlay,
-      #save-status {
-        display: none !important;
-      }
-
-      body.print-treino #diet-container,
-      body.print-treino #diet-print-header {
-        display: none !important;
-      }
-
-      body.print-dieta #workout-container,
-      body.print-dieta #workout-print-header {
-        display: none !important;
-      }
-
-      .print-header {
-        display: block !important;
-        text-align: center;
-        margin-bottom: 12px;
-        border-bottom: 2px solid #0f172a;
-        padding-bottom: 6px;
-      }
-
-      .print-header h2 {
-        font-family: 'Montserrat', sans-serif;
-        font-size: 14pt;
-        font-weight: 800;
-        text-transform: uppercase;
-        margin-bottom: 4px;
-        color: #0f172a;
-      }
-
-      .print-student-info {
-        font-weight: 700;
-        font-size: 9.5pt;
-        color: #1e293b;
-        margin-bottom: 2px;
-      }
-
-      .print-header p {
-        font-size: 8.5pt;
-        color: #475569;
-        font-weight: 600;
-      }
-
-      .table-container {
-        border: none !important;
-        width: 100% !important;
-        background: transparent !important;
-        display: block !important;
-        gap: 0 !important;
-      }
-
-      .day-block {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-        margin-bottom: 12px !important;
-        display: block !important;
-        border: none !important;
-        border-radius: 0 !important;
-        background: transparent !important;
-      }
-
-      table {
-        display: table !important;
-        width: 100% !important;
-        border-collapse: collapse !important;
-        table-layout: fixed !important;
-        margin-bottom: 0 !important;
-      }
-
-      thead { display: table-header-group !important; }
-      tbody { display: table-row-group !important; }
-
-      tr {
-        display: table-row !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-
-      th, td {
-        display: table-cell !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #0f172a !important;
-        padding: 5px 6px !important;
-        font-size: 8pt !important;
-        vertical-align: middle !important;
-        box-sizing: border-box !important;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-      }
-
-      th {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        text-transform: uppercase;
-        font-size: 7.5pt !important;
-      }
-
-      .day-cell {
-        background-color: #f8fafc !important;
-        vertical-align: top !important;
-        padding-top: 8px !important;
-      }
-
-      .day-title {
-        color: #0f172a !important;
-        font-weight: 800 !important;
-        font-size: 8.5pt !important;
-      }
-
-      .day-focus, .diet-tag {
-        color: #0284c7 !important;
-        font-weight: 700 !important;
-        font-size: 7.5pt !important;
-        margin-top: 2px;
-      }
-
-      .badge-reps, .badge-time {
-        background: none !important;
-        border: none !important;
-        color: #0f172a !important;
-        padding: 0 !important;
-        font-weight: 800 !important;
-        font-size: 8pt !important;
-      }
-
-      .badge-rest {
-        color: #334155 !important;
-        font-size: 7.5pt !important;
-      }
-
-      .carga-cell::before { display: none !important; }
-
-      .carga-input {
-        background: transparent !important;
-        border: none !important;
-        color: #0f172a !important;
-        font-weight: 800 !important;
-        text-align: center !important;
-        padding: 0 !important;
-        width: 100% !important;
-        font-size: 8.5pt !important;
-      }
-
-      .note-cell, .details-cell {
-        color: #334155 !important;
-        font-size: 7.5pt !important;
-        line-height: 1.25 !important;
-      }
-    }
-
-    .print-header { display: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão de Academias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-area, #printable-area * {
+                visibility: visible;
+            }
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
-<body class="print-treino">
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
 
-  <!-- Toast Notificação -->
-  <div id="save-status">✓ Salvo no banco de dados!</div>
-
-  <!-- Cabeçalho de Impressão do Treino -->
-  <div class="print-header" id="workout-print-header">
-    <h2>Plano de Treino Semanal</h2>
-    <div class="print-student-info" id="print-student-label-workout">Aluno: --</div>
-    <p id="print-label-workout">Semana 1 - Todos os Dias</p>
-  </div>
-
-  <!-- Cabeçalho de Impressão da Dieta -->
-  <div class="print-header" id="diet-print-header">
-    <h2>Plano Alimentar & Dieta Semanal</h2>
-    <div class="print-student-info" id="print-student-label-diet">Aluno: --</div>
-    <p id="print-label-diet">Cronograma Geral de Dietas</p>
-  </div>
-
-  <!-- Cabeçalho Principal -->
-  <header class="header no-print">
-    <div class="brand">
-      <div class="brand-icon">GYM</div>
-      <h1 id="app-title">Treinos</h1>
-    </div>
-
-    <div class="header-actions">
-      <button class="btn-action btn-reset" onclick="resetToDefault()">
-        🔄 Restaurar Padrão
-      </button>
-      <button class="btn-action" onclick="openPrintModal()">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"></path></svg>
-        PDF / Imprimir
-      </button>
-    </div>
-  </header>
-
-  <!-- Barra de Gestão de Alunos -->
-  <div class="student-bar no-print">
-    <div class="student-select-group">
-      <label for="student-select">👤 Aluno:</label>
-      <select id="student-select" class="student-select" onchange="switchStudent(this.value)">
-        <!-- Opções dinâmicas -->
-      </select>
-      <button class="btn-student-edit" title="Editar dados do aluno" onclick="editCurrentStudent()">✏️ Editar</button>
-    </div>
-    <button class="btn-student-add" onclick="openStudentModal(null)">+ Novo Aluno</button>
-  </div>
-
-  <!-- Navegação Principal (Abas Treino / Dieta) -->
-  <div class="main-tabs-wrapper no-print">
-    <button class="main-tab-btn active" id="tab-btn-treino" onclick="switchMainTab('treino')">
-      🏋️ Plano de Treino
-    </button>
-    <button class="main-tab-btn" id="tab-btn-dieta" onclick="switchMainTab('dieta')">
-      🥗 Plano Alimentar (Dieta)
-    </button>
-  </div>
-
-  <!-- Controles da Aba de Treino -->
-  <div class="controls-wrapper no-print" id="workout-controls">
-    <div class="selector-group">
-      <button class="btn-nav week-btn active" onclick="setWeek(1)">Semana 1</button>
-      <button class="btn-nav week-btn" onclick="setWeek(2)">Semana 2</button>
-      <button class="btn-nav week-btn" onclick="setWeek(3)">Semana 3</button>
-      <button class="btn-nav week-btn" onclick="setWeek(4)">Semana 4</button>
-    </div>
-
-    <div class="selector-group">
-      <button class="btn-nav btn-day active" onclick="setDay('all')">Ver Todos</button>
-      <button class="btn-nav btn-day" onclick="setDay('seg')">Segunda</button>
-      <button class="btn-nav btn-day" onclick="setDay('ter')">Terça</button>
-      <button class="btn-nav btn-day" onclick="setDay('qua')">Quarta</button>
-      <button class="btn-nav btn-day" onclick="setDay('qui')">Quinta</button>
-      <button class="btn-nav btn-day" onclick="setDay('sex')">Sexta</button>
-      <button class="btn-nav btn-day" onclick="setDay('sab')">Sábado</button>
-      <button class="btn-nav btn-day" onclick="setDay('dom')">Domingo</button>
-    </div>
-  </div>
-
-  <!-- Controles da Aba de Dieta -->
-  <div class="controls-wrapper no-print" id="diet-controls" style="display: none;">
-    <div class="selector-group">
-      <button class="btn-nav btn-diet-day active" onclick="setDietDay('all')">Ver Todos</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('seg')">Segunda</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('ter')">Terça</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('qua')">Quarta</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('qui')">Quinta</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('sex')">Sexta</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('sab')">Sábado</button>
-      <button class="btn-nav btn-diet-day" onclick="setDietDay('dom')">Domingo</button>
-    </div>
-  </div>
-
-  <!-- Container Treinos -->
-  <div class="table-container" id="workout-container">
-    <!-- Renderizado via JS -->
-  </div>
-
-  <!-- Container Dieta -->
-  <div class="table-container" id="diet-container" style="display: none;">
-    <!-- Renderizado via JS -->
-  </div>
-
-  <!-- Modal: Cadastrar / Editar Aluno -->
-  <div class="modal-overlay" id="student-modal">
-    <div class="modal-card">
-      <h3 id="student-modal-title">Cadastrar Novo Aluno</h3>
-      
-      <div class="form-group">
-        <label>Nome Completo</label>
-        <input type="text" id="student-name" class="form-control" placeholder="Ex: João Silva">
-      </div>
-
-      <div class="form-group">
-        <label>Telefone (DDD + Número)</label>
-        <input type="tel" id="student-phone" class="form-control" placeholder="(19) 98386-8028" oninput="handlePhoneInput(event)">
-      </div>
-
-      <div class="modal-buttons">
-        <button class="btn-modal btn-modal-cancel" onclick="closeStudentModal()">Cancelar</button>
-        <button class="btn-modal btn-modal-save" onclick="saveStudentModal()">Salvar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Adicionar / Editar Exercício -->
-  <div class="modal-overlay" id="exercise-modal">
-    <div class="modal-card">
-      <h3 id="modal-title">Adicionar Exercício</h3>
-      
-      <div class="form-group">
-        <label>Nome do Exercício</label>
-        <input type="text" id="modal-name" class="form-control" placeholder="Ex: Supino Reto com Barra">
-      </div>
-
-      <div class="form-group">
-        <label>Séries x Repetições</label>
-        <input type="text" id="modal-reps" class="form-control" placeholder="Ex: 3 x 10 a 12">
-      </div>
-
-      <div class="form-group">
-        <label>Descanso</label>
-        <input type="text" id="modal-rest" class="form-control" placeholder="Ex: 90 seg">
-      </div>
-
-      <div class="modal-buttons">
-        <button class="btn-modal btn-modal-cancel" onclick="closeModal()">Cancelar</button>
-        <button class="btn-modal btn-modal-save" onclick="saveExerciseModal()">Salvar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Adicionar / Editar Refeição na Dieta -->
-  <div class="modal-overlay" id="diet-modal">
-    <div class="modal-card">
-      <h3 id="diet-modal-title">Adicionar Refeição</h3>
-      
-      <div class="form-group">
-        <label>Horário</label>
-        <input type="text" id="diet-modal-time" class="form-control" placeholder="Ex: 07:30">
-      </div>
-
-      <div class="form-group">
-        <label>Nome da Refeição / Evento</label>
-        <input type="text" id="diet-modal-name" class="form-control" placeholder="Ex: Refeição 1 (Café da Manhã)">
-      </div>
-
-      <div class="form-group">
-        <label>Alimentos e Detalhes</label>
-        <textarea id="diet-modal-details" class="form-control" placeholder="Ex: • 3 Ovos inteiros&#10;• 2 Fatias de pão integral&#10;• Café preto"></textarea>
-      </div>
-
-      <div class="modal-buttons">
-        <button class="btn-modal btn-modal-cancel" onclick="closeDietModal()">Cancelar</button>
-        <button class="btn-modal btn-modal-save" onclick="saveDietModal()">Salvar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Seleção de Impressão -->
-  <div class="modal-overlay" id="print-modal">
-    <div class="modal-card">
-      <h3>Escolha o Relatório para Impressão</h3>
-      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Selecione o que deseja exportar/gerar em PDF para o aluno:</p>
-      
-      <button class="btn-print-option" onclick="executePrint('treino')">
-        <span style="font-size: 18px;">🏋️</span>
-        <div>
-          <div>Imprimir Apenas o Plano de Treino</div>
-          <div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">Exibe a ficha de exercícios e cargas</div>
+    <!-- Header / Navbar -->
+    <header class="bg-slate-900 text-white p-4 shadow-md no-print">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide">FitSys Pro</h1>
+            <div id="user-info" class="flex items-center space-x-4">
+                <span id="user-label" class="text-sm bg-slate-800 px-3 py-1 rounded-full border border-slate-700">Não conectado</span>
+                <button onclick="logout()" id="btn-logout" class="hidden text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded transition">Sair</button>
+            </div>
         </div>
-      </button>
+    </header>
 
-      <button class="btn-print-option" onclick="executePrint('dieta')">
-        <span style="font-size: 18px;">🥗</span>
-        <div>
-          <div>Imprimir Apenas a Dieta / Nutrição</div>
-          <div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">Exibe o cronograma semanal de refeições</div>
-        </div>
-      </button>
+    <main class="container mx-auto p-4 md:p-6">
 
-      <button class="btn-print-option" onclick="executePrint('both')">
-        <span style="font-size: 18px;">📄</span>
-        <div>
-          <div>Imprimir Treino + Dieta (Completo)</div>
-          <div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">Exporta o plano completo do aluno</div>
-        </div>
-      </button>
+        <!-- Tela de Autenticação Simulated Switcher (Para testes e produção) -->
+        <section id="auth-screen" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md border mt-10 no-print">
+            <h2 class="text-xl font-semibold mb-4 text-center">Acesso ao Sistema</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Selecione o Perfil para Simulação</label>
+                <select id="role-selector" onchange="switchRole(this.value)" class="w-full border p-2 rounded bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="">-- Selecionar Perfil --</option>
+                    <option value="sysadmin">SysAdmin (Administrador Geral)</option>
+                    <option value="academia">Academia (Gestor)</option>
+                    <option value="aluno">Aluno</option>
+                </select>
+            </div>
+            <p class="text-xs text-gray-500 text-center">Conecte com as credenciais do Supabase ou altere o perfil acima para testar as regras de acesso.</p>
+        </section>
 
-      <div class="modal-buttons">
-        <button class="btn-modal btn-modal-cancel" onclick="closePrintModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
+        <!-- ================= PANEL 1: SYSADMIN ================= -->
+        <section id="panel-sysadmin" class="hidden space-y-6">
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded text-amber-900 no-print">
+                <p class="font-bold">Painel do SysAdmin</p>
+                <p class="text-sm">Apenas você tem acesso ao cadastro e gerenciamento geral das academias.</p>
+            </div>
 
-  <script>
-    /* ================= CONFIGURAÇÃO SUPABASE ================= */
-    const SUPABASE_URL = "https://iuzwpaaygulmrjbfxiof.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_SyFTcgbc055sTCpLMHOSKA_6Q-gHj02";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Form Cadastro Academia -->
+                <div class="bg-white p-5 rounded-lg shadow border md:col-span-1 no-print">
+                    <h3 class="font-bold text-lg mb-4 text-slate-800">Cadastrar Nova Academia</h3>
+                    <form id="form-academia" onsubmit="handleCadastrarAcademia(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Nome da Academia</label>
+                            <input type="text" id="acad-nome" required class="w-full border p-2 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">CNPJ</label>
+                            <input type="text" id="acad-cnpj" required class="w-full border p-2 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">E-mail de Contato</label>
+                            <input type="email" id="acad-email" required class="w-full border p-2 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Telefone</label>
+                            <input type="text" id="acad-telefone" class="w-full border p-2 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-semibold transition">Cadastrar Academia</button>
+                    </form>
+                </div>
 
-    /* Estrutura Base de Treino */
-    const initialRoutine = {
-      seg: {
-        title: "Segunda",
-        focus: "Upper (Superiores)",
-        note: "Foco em progressão de carga nos primeiros exercícios multiarticulares.",
-        exercises: [
-          { id: "seg_1", name: "1. Supino Inclinado (Halter ou Máquina)", reps: "3 x 8 a 10", rest: "2 a 3 min" },
-          { id: "seg_2", name: "2. Puxador Frente (Costas)", reps: "3 x 8 a 10", rest: "2 a 3 min" },
-          { id: "seg_3", name: "3. Desenvolvimento Máquina (Ombro)", reps: "3 x 10 a 12", rest: "2 min" },
-          { id: "seg_4", name: "4. Remada Baixa na Polia (Costas)", reps: "3 x 10 a 12", rest: "2 min" },
-          { id: "seg_5", name: "5. Elevação Lateral (Ombro)", reps: "4 x 12 a 15", rest: "90 seg" },
-          { id: "seg_6", name: "6. Tríceps Pulley + Rosca Direta", reps: "3 x 10 a 12 cada", rest: "90 seg" }
-        ]
-      },
-      ter: {
-        title: "Terça",
-        focus: "Lower (Inferiores)",
-        note: "Stiff/RDL para cadeia posterior (isquiotibiais e glúteos).",
-        exercises: [
-          { id: "ter_1", name: "1. Leg Press Inclinado", reps: "4 x 8 a 10", rest: "2 a 3 min" },
-          { id: "ter_2", name: "2. Cadeira Extensora", reps: "3 x 10 a 12", rest: "90 seg" },
-          { id: "ter_3", name: "3. Stiff ou Levantamento Terra Romeno (RDL)", reps: "4 x 8 a 10", rest: "2 a 3 min" },
-          { id: "ter_4", name: "4. Cadeira Flexora", reps: "3 x 10 a 12", rest: "90 seg" },
-          { id: "ter_5", name: "5. Gêmeos (Panturrilha) em Pé", reps: "4 x 12 a 15", rest: "60 a 90 seg" }
-        ]
-      },
-      qua: {
-        title: "Quarta",
-        focus: "Push (Empurrar)",
-        note: "Cadeia anterior. + Cardio: 20-30 min Esteira.",
-        exercises: [
-          { id: "qua_1", name: "1. Supino Reto (Barra ou Halter)", reps: "4 x 8 a 10", rest: "2 a 3 min" },
-          { id: "qua_2", name: "2. Crucifixo ou Peck Deck", reps: "3 x 10 a 12", rest: "90 seg" },
-          { id: "qua_3", name: "3. Elevação Lateral na Polia", reps: "4 x 12 a 15", rest: "90 seg" },
-          { id: "qua_4", name: "4. Tríceps Testa (Barra ou Halter)", reps: "3 x 10 a 12", rest: "90 seg" }
-        ]
-      },
-      qui: {
-        title: "Quinta",
-        focus: "Pull (Puxar)",
-        note: "Densidade de costas e braços. + Cardio: 20-30 min Esteira.",
-        exercises: [
-          { id: "qui_1", name: "1. Puxador Articulado ou Barra Fixa", reps: "4 x 8 a 10", rest: "2 a 3 min" },
-          { id: "qui_2", name: "2. Remada Aberta na Polia / Máquina", reps: "4 x 10 a 12", rest: "2 min" },
-          { id: "qui_3", name: "3. Rosca Direta com Halter", reps: "3 x 10 a 12", rest: "90 seg" },
-          { id: "qui_4", name: "4. Rosca Martelo com Halter", reps: "3 x 10 a 12", rest: "90 seg" }
-        ]
-      },
-      sex: {
-        title: "Sexta",
-        focus: "Legs + Jitsu",
-        note: "Hipertrofia de pernas sem desgaste articular extremo antes do Jiu-Jitsu.",
-        exercises: [
-          { id: "sex_1", name: "1. Agachamento (Hack ou Máquina)", reps: "3 x 10 a 12", rest: "2 min" },
-          { id: "sex_2", name: "2. Cadeira Flexora", reps: "3 x 10 a 12", rest: "90 seg" },
-          { id: "sex_3", name: "3. Cadeira Adutora", reps: "3 x 12 a 15", rest: "60 a 90 seg" }
-        ]
-      },
-      sab: {
-        title: "Sábado",
-        focus: "Descanso / Opcional",
-        note: "Dia sem treino programado ou descanso ativo.",
-        exercises: []
-      },
-      dom: {
-        title: "Domingo",
-        focus: "Descanso / Opcional",
-        note: "Dia de descanso total ou recuperação.",
-        exercises: []
-      }
-    };
+                <!-- Lista de Academias -->
+                <div class="bg-white p-5 rounded-lg shadow border md:col-span-2">
+                    <h3 class="font-bold text-lg mb-4 text-slate-800">Academias Cadastradas</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-gray-100 border-b">
+                                    <th class="p-2">Nome</th>
+                                    <th class="p-2">CNPJ</th>
+                                    <th class="p-2">E-mail</th>
+                                    <th class="p-2">Telefone</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-academias">
+                                <tr>
+                                    <td colspan="4" class="p-3 text-center text-gray-500">Nenhuma academia cadastrada.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    /* Estrutura Base de Dieta Separada por Todos os Dias da Semana */
-    const initialDiet = {
-      seg: {
-        title: "Segunda-Feira",
-        tag: "Carbo Alto / Musculação às 16h30",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar", details: "Acordar" },
-          { time: "07:30", name: "Refeição 1 (Café)", details: "• 3 Ovos inteiros\n• 2 Fatias de pão integral\n• 1 col. requijão light\n• Café preto" },
-          { time: "10:30", name: "Refeição 2 (Lanche)", details: "• 1 Fruta grande\n• 20g de Castanhas" },
-          { time: "13:00", name: "Refeição 3 (Almoço)", details: "• 200g Frango ou Carne magra\n• 200g de Arroz\n• 100g de Feijão\n• Salada e vegetais" },
-          { time: "15:15", name: "Refeição 4 (PRÉ-TREINO)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 40g de Aveia\n• 5g de Creatina" },
-          { time: "16:30", name: "🏋️ TREINO MUSCULAÇÃO (16h30 às 17h40)", details: "• Seg: A - Upper" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 200g Frango, Carne ou Peixe\n• 200g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      },
-      ter: {
-        title: "Terça-Feira",
-        tag: "Carbo Alto / Musculação às 16h30",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar", details: "Acordar" },
-          { time: "07:30", name: "Refeição 1 (Café)", details: "• 3 Ovos inteiros\n• 2 Fatias de pão integral\n• 1 col. requijão light\n• Café preto" },
-          { time: "10:30", name: "Refeição 2 (Lanche)", details: "• 1 Fruta grande\n• 20g de Castanhas" },
-          { time: "13:00", name: "Refeição 3 (Almoço)", details: "• 200g Frango ou Carne magra\n• 200g de Arroz\n• 100g de Feijão\n• Salada e vegetais" },
-          { time: "15:15", name: "Refeição 4 (PRÉ-TREINO)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 40g de Aveia\n• 5g de Creatina" },
-          { time: "16:30", name: "🏋️ TREINO MUSCULAÇÃO (16h30 às 17h40)", details: "• Ter: B - Lower" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 200g Frango, Carne ou Peixe\n• 200g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      },
-      qua: {
-        title: "Quarta-Feira",
-        tag: "Carbo Alto / Musculação às 16h30",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar", details: "Acordar" },
-          { time: "07:30", name: "Refeição 1 (Café)", details: "• 3 Ovos inteiros\n• 2 Fatias de pão integral\n• 1 col. requijão light\n• Café preto" },
-          { time: "10:30", name: "Refeição 2 (Lanche)", details: "• 1 Fruta grande\n• 20g de Castanhas" },
-          { time: "13:00", name: "Refeição 3 (Almoço)", details: "• 200g Frango ou Carne magra\n• 200g de Arroz\n• 100g de Feijão\n• Salada e vegetais" },
-          { time: "15:15", name: "Refeição 4 (PRÉ-TREINO)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 40g de Aveia\n• 5g de Creatina" },
-          { time: "16:30", name: "🏋️ TREINO MUSCULAÇÃO (16h30 às 17h40)", details: "• Qua: C - Push + Cardio" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 200g Frango, Carne ou Peixe\n• 200g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      },
-      qui: {
-        title: "Quinta-Feira",
-        tag: "Carbo Alto / Musculação às 16h30",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar", details: "Acordar" },
-          { time: "07:30", name: "Refeição 1 (Café)", details: "• 3 Ovos inteiros\n• 2 Fatias de pão integral\n• 1 col. requijão light\n• Café preto" },
-          { time: "10:30", name: "Refeição 2 (Lanche)", details: "• 1 Fruta grande\n• 20g de Castanhas" },
-          { time: "13:00", name: "Refeição 3 (Almoço)", details: "• 200g Frango ou Carne magra\n• 200g de Arroz\n• 100g de Feijão\n• Salada e vegetais" },
-          { time: "15:15", name: "Refeição 4 (PRÉ-TREINO)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 40g de Aveia\n• 5g de Creatina" },
-          { time: "16:30", name: "🏋️ TREINO MUSCULAÇÃO (16h30 às 17h40)", details: "• Qui: D - Pull + Cardio" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 200g Frango, Carne ou Peixe\n• 200g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      },
-      sex: {
-        title: "Sexta-Feira",
-        tag: "Carbo Baixo / Dia Duplo",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar", details: "Acordar" },
-          { time: "07:30", name: "Refeição 1 (Café)", details: "• 4 Ovos inteiros\n• 1 Fatia de pão integral\n• Café preto" },
-          { time: "10:30", name: "Refeição 2 (Lanche)", details: "• 150g de Morango/Melão\n• 30g de Castanhas" },
-          { time: "11:45", name: "Refeição 4 (PRÉ-TREINO)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 15g de Aveia\n• 5g de Creatina" },
-          { time: "13:00", name: "🏋️ TREINO MUSCULAÇÃO (C - Legs)", details: "(13h00 às 14h00) Foco em máquinas e volume controlado." },
-          { time: "14:30", name: "Refeição 3 (Almoço/PÓS-TREINO)", details: "• 220g Frango ou Carne magra\n• 100g de Arroz\n• Salada e vegetais" },
-          { time: "17:00", name: "🥋 TREINO JIU-JITSU", details: "(17h00 às 17h35)" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 220g Frango, Carne ou Peixe\n• 100g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      },
-      sab: {
-        title: "Sábado",
-        tag: "Carbo Baixo / Descanso Total",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar (Livre)", details: "Acordar" },
-          { time: "07:30", name: "Refeição 1 (Café)", details: "• 4 Ovos inteiros\n• 1 Fatia de pão integral\n• Café preto" },
-          { time: "10:30", name: "Refeição 2 (Lanche)", details: "• 150g de Morango/Melão\n• 30g de Castanhas" },
-          { time: "13:00", name: "Refeição 3 (Almoço)", details: "• 220g Frango ou Carne magra\n• 100g de Arroz\n• Salada e vegetais\n• 1 col. chá azeite" },
-          { time: "16:30", name: "Refeição 4 (Lanche)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 15g de Aveia\n• 5g de Creatina (Mesmo sem treinar)" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 220g Frango, Carne ou Peixe\n• 100g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      },
-      dom: {
-        title: "Domingo",
-        tag: "Carbo Baixo / Jitsu Cedinho",
-        meals: [
-          { time: "06:00", name: "⏰ Acordar", details: "Acordar" },
-          { time: "06:30", name: "Refeição 1 (PRÉ-JITSU)", details: "• 4 Ovos inteiros\n• 1 Fatia de pão integral\n• Café preto" },
-          { time: "08:30", name: "🥋 TREINO JIU-JITSU", details: "(08h30 às 09h05/09h10)" },
-          { time: "10:30", name: "Refeição 2 (PÓS-JITSU)", details: "• 150g de Morango/Melão\n• 30g de Castanhas" },
-          { time: "13:00", name: "Refeição 3 (Almoço)", details: "• 220g Frango ou Carne magra\n• 100g de Arroz\n• Salada e vegetais\n• 1 col. chá azeite" },
-          { time: "16:30", name: "Refeição 4 (Lanche)", details: "• 1 Dosador de Whey\n• 250ml Leite Desnatado\n• 15g de Aveia\n• 5g de Creatina" },
-          { time: "20:00", name: "Refeição 5 (Jantar)", details: "• 220g Frango, Carne ou Peixe\n• 100g Batata Doce / Mandioca\n• Salada verde" },
-          { time: "23:00", name: "🛌 Dormir", details: "7h de sono" }
-        ]
-      }
-    };
+        <!-- ================= PANEL 2: ACADEMIA ================= -->
+        <section id="panel-academia" class="hidden space-y-6">
+            <!-- Sub-navegação da Academia -->
+            <div class="flex space-x-2 border-b pb-2 no-print">
+                <button onclick="switchAcademiaTab('alunos')" id="tab-btn-alunos" class="px-4 py-2 bg-blue-600 text-white rounded font-medium text-sm">Alunos</button>
+                <button onclick="switchAcademiaTab('treinos')" id="tab-btn-treinos" class="px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium text-sm">Treinos</button>
+                <button onclick="switchAcademiaTab('dietas')" id="tab-btn-dietas" class="px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium text-sm">Dietas</button>
+            </div>
 
-    let students = [];
-    let currentStudentId = null;
-    let editingStudentId = null;
+            <!-- Aba Alunos -->
+            <div id="tab-alunos" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-5 rounded-lg shadow border md:col-span-1 no-print">
+                    <h3 class="font-bold text-lg mb-4">Gerenciar Aluno</h3>
+                    <form id="form-aluno" onsubmit="handleCadastrarAluno(event)" class="space-y-3">
+                        <input type="hidden" id="aluno-id">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Nome Completo</label>
+                            <input type="text" id="aluno-nome" required class="w-full border p-2 rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">E-mail</label>
+                            <input type="email" id="aluno-email" required class="w-full border p-2 rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Telefone</label>
+                            <input type="text" id="aluno-telefone" class="w-full border p-2 rounded text-sm">
+                        </div>
+                        <div class="flex space-x-2 pt-2">
+                            <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded text-sm font-semibold">Salvar</button>
+                            <button type="button" onclick="resetAlunoForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded text-sm">Limpar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-white p-5 rounded-lg shadow border md:col-span-2">
+                    <h3 class="font-bold text-lg mb-4">Alunos Matriculados</h3>
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="p-2">Nome</th>
+                                <th class="p-2">E-mail</th>
+                                <th class="p-2">Telefone</th>
+                                <th class="p-2 text-right no-print">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-alunos">
+                            <tr><td colspan="4" class="p-3 text-center text-gray-500">Nenhum aluno encontrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-    let activeTab = 'treino';
-    let currentWeek = 1;
-    let currentDay = 'all';
-    let currentDietDay = 'all';
+            <!-- Aba Treinos -->
+            <div id="tab-treinos" class="hidden space-y-6">
+                <div class="bg-white p-5 rounded-lg shadow border no-print">
+                    <h3 class="font-bold text-lg mb-4">Cadastrar / Modificar Treino</h3>
+                    <form id="form-treino" onsubmit="handleCadastrarTreino(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Aluno Selecionado</label>
+                                <select id="treino-aluno-id" required class="w-full border p-2 rounded text-sm bg-gray-50">
+                                    <option value="">Selecione um Aluno</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Nome do Treino (Ex: Treino A - Peito e Tríceps)</label>
+                                <input type="text" id="treino-nome" required class="w-full border p-2 rounded text-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold">Salvar Treino</button>
+                    </form>
+                </div>
+            </div>
 
-    let routineData = {};
-    let dietData = {};
-    let loadsData = {};
+            <!-- Aba Dietas -->
+            <div id="tab-dietas" class="hidden space-y-6">
+                <div class="bg-white p-5 rounded-lg shadow border no-print">
+                    <h3 class="font-bold text-lg mb-4">Cadastrar / Modificar Dieta</h3>
+                    <form id="form-dieta" onsubmit="handleCadastrarDieta(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Aluno Selecionado</label>
+                                <select id="dieta-aluno-id" required class="w-full border p-2 rounded text-sm bg-gray-50">
+                                    <option value="">Selecione um Aluno</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Título da Dieta (Ex: Hipertrofia - 2800 kcal)</label>
+                                <input type="text" id="dieta-titulo" required class="w-full border p-2 rounded text-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold">Salvar Dieta</button>
+                    </form>
+                </div>
+            </div>
 
-    let editingState = { dayKey: null, exIndex: null };
-    let editingDietState = { dayKey: null, mealIndex: null };
+            <!-- Visualização Geral e Impressão para Academia -->
+            <div class="bg-white p-5 rounded-lg shadow border mt-6 no-print">
+                <h3 class="font-bold text-lg mb-2">Impressão Rápida de Fichas</h3>
+                <p class="text-sm text-gray-600 mb-4">Selecione um aluno para visualizar e imprimir a ficha completa de treinos e dietas.</p>
+                <div class="flex items-center space-x-3">
+                    <select id="select-aluno-impressao" class="border p-2 rounded text-sm flex-1 max-w-xs">
+                        <option value="">Selecione o Aluno</option>
+                    </select>
+                    <button onclick="carregarFichaAlunoAcademia()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-semibold">Carregar Ficha</button>
+                </div>
+            </div>
+        </section>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initStudents();
-    });
+        <!-- ================= PANEL 3: ALUNO ================= -->
+        <section id="panel-aluno" class="hidden space-y-6">
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-blue-900 no-print">
+                <p class="font-bold">Área do Aluno</p>
+                <p class="text-sm">Você pode visualizar seus treinos e dietas, além de ajustar suas cargas em tempo real.</p>
+            </div>
+        </section>
 
-    /* ================= MÁSCARA TELEFONE ================= */
-    function maskPhone(value) {
-      let v = value.replace(/\D/g, "");
-      if (v.startsWith("0")) v = v.substring(1);
-      if (v.length > 11) v = v.substring(0, 11);
+        <!-- AREA IMPRESSA / EXIBIÇÃO DE FICHA (Compartilhada por Aluno e Academia) -->
+        <section id="printable-area" class="hidden space-y-6 mt-6">
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <div class="flex justify-between items-center border-b pb-4 mb-4">
+                    <div>
+                        <h2 id="ficha-aluno-nome" class="text-2xl font-bold text-gray-800">Ficha do Aluno</h2>
+                        <p id="ficha-academia-nome" class="text-sm text-gray-500">Academia FitSys</p>
+                    </div>
+                    <button onclick="window.print()" class="no-print bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-semibold flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <span>Imprimir Treino & Dieta</span>
+                    </button>
+                </div>
 
-      if (v.length === 0) return "";
-      if (v.length <= 2) return `(${v}`;
-      if (v.length <= 6) return `(${v.substring(0, 2)}) ${v.substring(2)}`;
-      if (v.length <= 10) return `(${v.substring(0, 2)}) ${v.substring(2, 6)}-${v.substring(6)}`;
-      
-      return `(${v.substring(0, 2)}) ${v.substring(2, 7)}-${v.substring(7)}`;
-    }
+                <!-- Seção de Treinos -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-blue-800 border-b pb-1 mb-3">Meus Treinos</h3>
+                    <div id="container-treinos" class="space-y-4">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
 
-    function handlePhoneInput(e) {
-      e.target.value = maskPhone(e.target.value);
-    }
+                <!-- Seção de Dietas -->
+                <div>
+                    <h3 class="text-lg font-bold text-green-800 border-b pb-1 mb-3">Minha Dieta</h3>
+                    <div id="container-dietas" class="space-y-4">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    /* ================= TROCA DE ABAS PRINCIPAIS ================= */
-    function switchMainTab(tab) {
-      activeTab = tab;
-      const btnTreino = document.getElementById('tab-btn-treino');
-      const btnDieta = document.getElementById('tab-btn-dieta');
-      const workoutControls = document.getElementById('workout-controls');
-      const dietControls = document.getElementById('diet-controls');
-      const workoutContainer = document.getElementById('workout-container');
-      const dietContainer = document.getElementById('diet-container');
-      const title = document.getElementById('app-title');
+    </main>
 
-      if (tab === 'treino') {
-        btnTreino.className = 'main-tab-btn active';
-        btnDieta.className = 'main-tab-btn';
-        workoutControls.style.display = 'flex';
-        dietControls.style.display = 'none';
-        workoutContainer.style.display = 'flex';
-        dietContainer.style.display = 'none';
-        title.innerText = 'Treinos';
-      } else {
-        btnTreino.className = 'main-tab-btn';
-        btnDieta.className = 'main-tab-btn active-diet';
-        workoutControls.style.display = 'none';
-        dietControls.style.display = 'flex';
-        workoutContainer.style.display = 'none';
-        dietContainer.style.display = 'flex';
-        title.innerText = 'Dieta & Nutrição';
-      }
-    }
+    <script>
+        // -------------------------------------------------------------
+        // CONFIGURAÇÃO SUPABASE
+        // -------------------------------------------------------------
+        const SUPABASE_URL = 'SUA_SUPABASE_URL';
+        const SUPABASE_KEY = 'SUA_SUPABASE_ANON_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* ================= GESTÃO E PERSISTÊNCIA NO SUPABASE ================= */
-    async function initStudents() {
-      try {
-        const { data, error } = await supabaseClient
-          .from('alunos')
-          .select('*')
-          .order('nome', { ascending: true });
+        // Estado da aplicação
+        let currentRole = null;
+        let mockData = {
+            academias: [
+                { id: '1', nome: 'Academia Fit Center', cnpj: '12.345.678/0001-90', email: 'contato@fitcenter.com', telefone: '(11) 99999-0000' }
+            ],
+            alunos: [
+                { id: '101', nome: 'Carlos Silva', email: 'carlos@email.com', telefone: '(11) 98888-1111', academia_id: '1' }
+            ],
+            treinos: [
+                {
+                    id: 't1', aluno_id: '101', nome_treino: 'Treino A - Peito e Tríceps',
+                    exercicios: [
+                        { id: 'ex1', nome_exercicio: 'Supino Reto', series: 4, repeticoes: 10, carga: 30.0 },
+                        { id: 'ex2', nome_exercicio: 'Tríceps Pulley', series: 3, repeticoes: 12, carga: 25.0 }
+                    ]
+                }
+            ],
+            dietas: [
+                {
+                    id: 'd1', aluno_id: '101', titulo: 'Dieta Bulking Limpo',
+                    itens: [
+                        { horario: '08:00', refeicao: 'Café da Manhã', descricao: '4 Ovos mexidos, 2 fatias de pão integral, 200ml café' },
+                        { horario: '12:00', refeicao: 'Almoço', descricao: '150g Frango grelhado, 200g Arroz, Salada à vontade' }
+                    ]
+                }
+            ]
+        };
 
-        if (error) {
-          console.error("Erro ao buscar alunos do Supabase:", error);
-          return;
+        // -------------------------------------------------------------
+        // TROCA DE PERFIL / NAVEGAÇÃO
+        // -------------------------------------------------------------
+        function switchRole(role) {
+            currentRole = role;
+            document.getElementById('panel-sysadmin').classList.add('hidden');
+            document.getElementById('panel-academia').classList.add('hidden');
+            document.getElementById('panel-aluno').classList.add('hidden');
+            document.getElementById('printable-area').classList.add('hidden');
+            
+            const userLabel = document.getElementById('user-label');
+            const btnLogout = document.getElementById('btn-logout');
+
+            if (!role) {
+                userLabel.innerText = "Não conectado";
+                btnLogout.classList.add('hidden');
+                return;
+            }
+
+            btnLogout.classList.remove('hidden');
+
+            if (role === 'sysadmin') {
+                userLabel.innerText = "Perfil: SysAdmin";
+                document.getElementById('panel-sysadmin').classList.remove('hidden');
+                renderAcademias();
+            } else if (role === 'academia') {
+                userLabel.innerText = "Perfil: Academia (Gestor)";
+                document.getElementById('panel-academia').classList.remove('hidden');
+                renderAlunos();
+                populateSelectAlunos();
+            } else if (role === 'aluno') {
+                userLabel.innerText = "Perfil: Aluno (Carlos Silva)";
+                document.getElementById('panel-aluno').classList.remove('hidden');
+                document.getElementById('printable-area').classList.remove('hidden');
+                carregarFichaAluno('101');
+            }
         }
 
-        students = data || [];
-
-        if (students.length === 0) {
-          const { data: newStd, error: insertError } = await supabaseClient
-            .from('alunos')
-            .insert([{
-              nome: 'Aluno Exemplo',
-              telefone: '(19) 98386-8028',
-              rotina_data: initialRoutine,
-              dieta_data: initialDiet,
-              cargas_data: {}
-            }])
-            .select();
-
-          if (!insertError && newStd && newStd.length > 0) {
-            students.push(newStd[0]);
-          }
+        function logout() {
+            document.getElementById('role-selector').value = '';
+            switchRole('');
         }
 
-        if (students.length > 0) {
-          currentStudentId = students[0].id;
-          renderStudentSelect();
-          loadStudentData(currentStudentId);
-        }
-      } catch (err) {
-        console.error("Falha na inicialização:", err);
-      }
-    }
+        function switchAcademiaTab(tab) {
+            document.getElementById('tab-alunos').classList.add('hidden');
+            document.getElementById('tab-treinos').classList.add('hidden');
+            document.getElementById('tab-dietas').classList.add('hidden');
 
-    function renderStudentSelect() {
-      const select = document.getElementById('student-select');
-      select.innerHTML = '';
-      students.forEach(std => {
-        const option = document.createElement('option');
-        option.value = std.id;
-        option.textContent = `${std.nome} (${std.telefone})`;
-        if (std.id === currentStudentId) option.selected = true;
-        select.appendChild(option);
-      });
-      updatePrintHeaderInfo();
-    }
+            document.getElementById('tab-btn-alunos').className = 'px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium text-sm';
+            document.getElementById('tab-btn-treinos').className = 'px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium text-sm';
+            document.getElementById('tab-btn-dietas').className = 'px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium text-sm';
 
-    function switchStudent(studentId) {
-      currentStudentId = studentId;
-      loadStudentData(studentId);
-      updatePrintHeaderInfo();
-    }
-
-    function updatePrintHeaderInfo() {
-      const current = students.find(s => s.id === currentStudentId);
-      if (current) {
-        const labelText = `Aluno(a): ${current.nome} | Tel: ${current.telefone}`;
-        document.getElementById('print-student-label-workout').innerText = labelText;
-        document.getElementById('print-student-label-diet').innerText = labelText;
-      }
-    }
-
-    function editCurrentStudent() {
-      if (!currentStudentId) return;
-      openStudentModal(currentStudentId);
-    }
-
-    function openStudentModal(studentId = null) {
-      editingStudentId = studentId;
-      const modal = document.getElementById('student-modal');
-      const title = document.getElementById('student-modal-title');
-      const nameInput = document.getElementById('student-name');
-      const phoneInput = document.getElementById('student-phone');
-
-      if (studentId) {
-        title.innerText = "Editar Dados do Aluno";
-        const std = students.find(s => s.id === studentId);
-        if (std) {
-          nameInput.value = std.nome;
-          phoneInput.value = std.telefone;
-        }
-      } else {
-        title.innerText = "Cadastrar Novo Aluno";
-        nameInput.value = '';
-        phoneInput.value = '';
-      }
-
-      modal.classList.add('active');
-    }
-
-    function closeStudentModal() {
-      document.getElementById('student-modal').classList.remove('active');
-    }
-
-    async function saveStudentModal() {
-      const name = document.getElementById('student-name').value.trim();
-      const phone = document.getElementById('student-phone').value.trim();
-      const cleanPhone = phone.replace(/\D/g, "");
-
-      if (!name) { alert("Por favor, preencha o Nome Completo do aluno."); return; }
-      if (cleanPhone.length < 10 || cleanPhone.length > 11) { alert("Número de telefone inválido!"); return; }
-
-      if (editingStudentId) {
-        const { error } = await supabaseClient
-          .from('alunos')
-          .update({ nome: name, telefone: phone })
-          .eq('id', editingStudentId);
-
-        if (!error) {
-          const index = students.findIndex(s => s.id === editingStudentId);
-          if (index !== -1) {
-            students[index].nome = name;
-            students[index].telefone = phone;
-          }
-        } else {
-          alert("Erro ao atualizar o aluno.");
-          return;
-        }
-      } else {
-        const { data, error } = await supabaseClient
-          .from('alunos')
-          .insert([{
-            nome: name,
-            telefone: phone,
-            rotina_data: initialRoutine,
-            dieta_data: initialDiet,
-            cargas_data: {}
-          }])
-          .select();
-
-        if (!error && data && data.length > 0) {
-          students.push(data[0]);
-          currentStudentId = data[0].id;
-          loadStudentData(currentStudentId);
-        } else {
-          alert("Erro ao cadastrar novo aluno.");
-          return;
-        }
-      }
-
-      renderStudentSelect();
-      updatePrintHeaderInfo();
-      closeStudentModal();
-      showSaveToast();
-    }
-
-    function loadStudentData(studentId) {
-      const student = students.find(s => s.id === studentId);
-      if (!student) return;
-
-      routineData = (student.rotina_data && Object.keys(student.rotina_data).length > 0)
-        ? student.rotina_data
-        : JSON.parse(JSON.stringify(initialRoutine));
-
-      dietData = (student.dieta_data && Object.keys(student.dieta_data).length > 0)
-        ? student.dieta_data
-        : JSON.parse(JSON.stringify(initialDiet));
-
-      loadsData = student.cargas_data || {};
-
-      renderWorkout();
-      renderDiet();
-    }
-
-    async function persistCurrentStudentData() {
-      if (!currentStudentId) return;
-
-      const studentIndex = students.findIndex(s => s.id === currentStudentId);
-      if (studentIndex !== -1) {
-        students[studentIndex].rotina_data = routineData;
-        students[studentIndex].dieta_data = dietData;
-        students[studentIndex].cargas_data = loadsData;
-      }
-
-      const { error } = await supabaseClient
-        .from('alunos')
-        .update({
-          rotina_data: routineData,
-          dieta_data: dietData,
-          cargas_data: loadsData
-        })
-        .eq('id', currentStudentId);
-
-      if (error) {
-        console.error("Erro ao salvar no Supabase:", error);
-      } else {
-        showSaveToast();
-      }
-    }
-
-    let loadDebounceTimeout;
-    function saveLoad(exId, value) {
-      const key = `w${currentWeek}_${exId}`;
-      loadsData[key] = value;
-
-      const studentIndex = students.findIndex(s => s.id === currentStudentId);
-      if (studentIndex !== -1) {
-        students[studentIndex].cargas_data = loadsData;
-      }
-
-      clearTimeout(loadDebounceTimeout);
-      loadDebounceTimeout = setTimeout(async () => {
-        const { error } = await supabaseClient
-          .from('alunos')
-          .update({ cargas_data: loadsData })
-          .eq('id', currentStudentId);
-
-        if (!error) {
-          showSaveToast();
-        }
-      }, 500);
-    }
-
-    let toastTimeout;
-    function showSaveToast() {
-      const toast = document.getElementById('save-status');
-      toast.classList.add('show');
-      clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1500);
-    }
-
-    /* ================= RENDERIZAÇÃO DO TREINO ================= */
-    function renderWorkout() {
-      const container = document.getElementById('workout-container');
-      container.innerHTML = '';
-
-      Object.keys(routineData).forEach(dayKey => {
-        const dayData = routineData[dayKey];
-        const exCount = dayData.exercises.length;
-        const isVisible = (currentDay === 'all' || currentDay === dayKey);
-
-        if (!isVisible) return;
-
-        const dayBlock = document.createElement('div');
-        dayBlock.className = 'day-block';
-
-        let rowsHtml = '';
-
-        if (exCount === 0) {
-          rowsHtml = `
-            <tr>
-              <td class="day-cell">
-                <div class="day-title">${dayData.title}</div>
-                <div class="day-focus">${dayData.focus}</div>
-              </td>
-              <td colspan="4" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 14px;">
-                Nenhum exercício cadastrado para este dia.
-              </td>
-              <td class="actions-cell no-print"></td>
-              <td class="note-cell">${dayData.note || ''}</td>
-            </tr>`;
-        } else {
-          dayData.exercises.forEach((ex, index) => {
-            const cargaKey = `w${currentWeek}_${ex.id}`;
-            const currentCarga = loadsData[cargaKey] || '';
-
-            let dayTdHtml = index === 0 ? `
-              <td rowspan="${exCount}" class="day-cell">
-                <div class="day-title">${dayData.title}</div>
-                <div class="day-focus">${dayData.focus}</div>
-              </td>` : '';
-
-            let noteTdHtml = index === 0 ? `
-              <td rowspan="${exCount}" class="note-cell">
-                ${dayData.note || ''}
-              </td>` : '';
-
-            rowsHtml += `
-              <tr>
-                ${dayTdHtml}
-                <td class="ex-cell">${ex.name}</td>
-                <td class="reps-cell"><span class="badge-reps">${ex.reps}</span></td>
-                <td class="rest-cell"><span class="badge-rest">${ex.rest}</span></td>
-                <td class="carga-cell">
-                  <input type="text" class="carga-input" placeholder="-- kg" value="${currentCarga}" oninput="saveLoad('${ex.id}', this.value)">
-                </td>
-                <td class="actions-cell no-print">
-                  <div class="item-actions">
-                    <button class="btn-icon" title="Editar" onclick="openModal('${dayKey}', ${index})">✏️</button>
-                    <button class="btn-icon delete" title="Excluir" onclick="removeExercise('${dayKey}', ${index})">🗑️</button>
-                  </div>
-                </td>
-                ${noteTdHtml}
-              </tr>`;
-          });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = 'px-4 py-2 bg-blue-600 text-white rounded font-medium text-sm';
         }
 
-        const addRowHtml = `
-          <tr class="no-print">
-            <td colspan="7" style="padding: 6px 0 !important; background: transparent !important; border: none !important;">
-              <button class="btn-add-ex" onclick="openModal('${dayKey}', null)">+ Adicionar Exercício em ${dayData.title}</button>
-            </td>
-          </tr>`;
-
-        dayBlock.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th style="width:16%">Dia / Foco</th>
-                <th style="width:30%">Exercício</th>
-                <th style="width:15%">Séries x Repetições</th>
-                <th style="width:12%">Descanso</th>
-                <th style="width:10%">Carga (kg)</th>
-                <th style="width:5%" class="no-print">Ações</th>
-                <th style="width:12%">Observações</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-              ${addRowHtml}
-            </tbody>
-          </table>`;
-
-        container.appendChild(dayBlock);
-      });
-    }
-
-    /* ================= RENDERIZAÇÃO DA DIETA ================= */
-    function renderDiet() {
-      const container = document.getElementById('diet-container');
-      container.innerHTML = '';
-
-      Object.keys(dietData).forEach(dayKey => {
-        const dayData = dietData[dayKey];
-        const mealCount = dayData.meals.length;
-        const isVisible = (currentDietDay === 'all' || currentDietDay === dayKey);
-
-        if (!isVisible) return;
-
-        const dayBlock = document.createElement('div');
-        dayBlock.className = 'day-block';
-
-        let rowsHtml = '';
-
-        if (mealCount === 0) {
-          rowsHtml = `
-            <tr>
-              <td class="day-cell">
-                <div class="day-title">${dayData.title}</div>
-                <div class="diet-tag">${dayData.tag || ''}</div>
-              </td>
-              <td colspan="3" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 14px;">
-                Nenhuma refeição cadastrada para este dia.
-              </td>
-              <td class="actions-cell no-print"></td>
-            </tr>`;
-        } else {
-          dayData.meals.forEach((meal, index) => {
-            let dayTdHtml = index === 0 ? `
-              <td rowspan="${mealCount}" class="day-cell">
-                <div class="day-title">${dayData.title}</div>
-                <div class="diet-tag">${dayData.tag || ''}</div>
-              </td>` : '';
-
-            const formattedDetails = meal.details ? meal.details.replace(/\n/g, '<br>') : '';
-
-            rowsHtml += `
-              <tr>
-                ${dayTdHtml}
-                <td class="time-cell"><span class="badge-time">${meal.time}</span></td>
-                <td class="meal-cell">${meal.name}</td>
-                <td class="details-cell">${formattedDetails}</td>
-                <td class="actions-cell no-print">
-                  <div class="item-actions">
-                    <button class="btn-icon" title="Editar Refeição" onclick="openDietModal('${dayKey}', ${index})">✏️</button>
-                    <button class="btn-icon delete" title="Excluir Refeição" onclick="removeDietMeal('${dayKey}', ${index})">🗑️</button>
-                  </div>
-                </td>
-              </tr>`;
-          });
+        // -------------------------------------------------------------
+        // REGRA 1: SYSADMIN (Apenas ele gerencia/vê Academias)
+        // -------------------------------------------------------------
+        function handleCadastrarAcademia(e) {
+            e.preventDefault();
+            const novaAcademia = {
+                id: Date.now().toString(),
+                nome: document.getElementById('acad-nome').value,
+                cnpj: document.getElementById('acad-cnpj').value,
+                email: document.getElementById('acad-email').value,
+                telefone: document.getElementById('acad-telefone').value
+            };
+            mockData.academias.push(novaAcademia);
+            document.getElementById('form-academia').reset();
+            renderAcademias();
         }
 
-        const addRowHtml = `
-          <tr class="no-print">
-            <td colspan="5" style="padding: 6px 0 !important; background: transparent !important; border: none !important;">
-              <button class="btn-add-meal" onclick="openDietModal('${dayKey}', null)">+ Adicionar Refeição em ${dayData.title}</button>
-            </td>
-          </tr>`;
-
-        dayBlock.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th style="width:18%">Dia / Foco Nutricional</th>
-                <th style="width:10%">Horário</th>
-                <th style="width:22%">Refeição / Evento</th>
-                <th style="width:44%">Alimentos & Detalhes</th>
-                <th style="width:6%" class="no-print">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-              ${addRowHtml}
-            </tbody>
-          </table>`;
-
-        container.appendChild(dayBlock);
-      });
-    }
-
-    /* ================= FILTROS E NAVEGAÇÃO ================= */
-    function setWeek(weekNum) {
-      currentWeek = weekNum;
-      document.querySelectorAll('.week-btn').forEach((btn, idx) => {
-        btn.classList.toggle('active', idx + 1 === weekNum);
-      });
-      document.getElementById('print-label-workout').innerText = `Semana ${currentWeek} - Ficha de Treino`;
-      renderWorkout();
-    }
-
-    function setDay(dayKey) {
-      currentDay = dayKey;
-      document.querySelectorAll('.btn-day').forEach(btn => {
-        const onclickAttr = btn.getAttribute('onclick');
-        btn.classList.toggle('active', onclickAttr.includes(`'${dayKey}'`));
-      });
-      renderWorkout();
-    }
-
-    function setDietDay(dayKey) {
-      currentDietDay = dayKey;
-      document.querySelectorAll('.btn-diet-day').forEach(btn => {
-        const onclickAttr = btn.getAttribute('onclick');
-        btn.classList.toggle('active', onclickAttr.includes(`'${dayKey}'`));
-      });
-      renderDiet();
-    }
-
-    /* ================= MODAL EXERCÍCIO ================= */
-    function openModal(dayKey, index) {
-      editingState = { dayKey, exIndex: index };
-      const modal = document.getElementById('exercise-modal');
-      const title = document.getElementById('modal-title');
-      const inputName = document.getElementById('modal-name');
-      const inputReps = document.getElementById('modal-reps');
-      const inputRest = document.getElementById('modal-rest');
-
-      if (index !== null) {
-        title.innerText = "Editar Exercício";
-        const ex = routineData[dayKey].exercises[index];
-        inputName.value = ex.name;
-        inputReps.value = ex.reps;
-        inputRest.value = ex.rest;
-      } else {
-        title.innerText = `Adicionar Exercício em ${routineData[dayKey].title}`;
-        inputName.value = '';
-        inputReps.value = '3 x 10 a 12';
-        inputRest.value = '90 seg';
-      }
-
-      modal.classList.add('active');
-    }
-
-    function closeModal() {
-      document.getElementById('exercise-modal').classList.remove('active');
-    }
-
-    function saveExerciseModal() {
-      const { dayKey, exIndex } = editingState;
-      const name = document.getElementById('modal-name').value.trim();
-      const reps = document.getElementById('modal-reps').value.trim();
-      const rest = document.getElementById('modal-rest').value.trim();
-
-      if (!name) { alert("Por favor, informe o nome do exercício."); return; }
-
-      if (exIndex !== null) {
-        routineData[dayKey].exercises[exIndex].name = name;
-        routineData[dayKey].exercises[exIndex].reps = reps;
-        routineData[dayKey].exercises[exIndex].rest = rest;
-      } else {
-        routineData[dayKey].exercises.push({
-          id: `${dayKey}_${Date.now()}`,
-          name: name,
-          reps: reps || '3 x 10 a 12',
-          rest: rest || '90 seg'
-        });
-      }
-
-      persistCurrentStudentData();
-      renderWorkout();
-      closeModal();
-    }
-
-    function removeExercise(dayKey, index) {
-      if (confirm("Deseja realmente remover este exercício?")) {
-        routineData[dayKey].exercises.splice(index, 1);
-        persistCurrentStudentData();
-        renderWorkout();
-      }
-    }
-
-    /* ================= MODAL DIETA ================= */
-    function openDietModal(dayKey, index) {
-      editingDietState = { dayKey, mealIndex: index };
-      const modal = document.getElementById('diet-modal');
-      const title = document.getElementById('diet-modal-title');
-      const timeInput = document.getElementById('diet-modal-time');
-      const nameInput = document.getElementById('diet-modal-name');
-      const detailsInput = document.getElementById('diet-modal-details');
-
-      if (index !== null) {
-        title.innerText = "Editar Refeição";
-        const meal = dietData[dayKey].meals[index];
-        timeInput.value = meal.time;
-        nameInput.value = meal.name;
-        detailsInput.value = meal.details;
-      } else {
-        title.innerText = `Adicionar Refeição em ${dietData[dayKey].title}`;
-        timeInput.value = '08:00';
-        nameInput.value = '';
-        detailsInput.value = '';
-      }
-
-      modal.classList.add('active');
-    }
-
-    function closeDietModal() {
-      document.getElementById('diet-modal').classList.remove('active');
-    }
-
-    function saveDietModal() {
-      const { dayKey, mealIndex } = editingDietState;
-      const time = document.getElementById('diet-modal-time').value.trim();
-      const name = document.getElementById('diet-modal-name').value.trim();
-      const details = document.getElementById('diet-modal-details').value.trim();
-
-      if (!time || !name) {
-        alert("Preencha o horário e o nome da refeição.");
-        return;
-      }
-
-      if (mealIndex !== null) {
-        dietData[dayKey].meals[mealIndex] = { time, name, details };
-      } else {
-        dietData[dayKey].meals.push({ time, name, details });
-      }
-
-      persistCurrentStudentData();
-      renderDiet();
-      closeDietModal();
-    }
-
-    function removeDietMeal(dayKey, index) {
-      if (confirm("Deseja remover esta refeição da dieta?")) {
-        dietData[dayKey].meals.splice(index, 1);
-        persistCurrentStudentData();
-        renderDiet();
-      }
-    }
-
-    /* ================= IMPRESSÃO & EXPORTAÇÃO ================= */
-    function openPrintModal() {
-      document.getElementById('print-modal').classList.add('active');
-    }
-
-    function closePrintModal() {
-      document.getElementById('print-modal').classList.remove('active');
-    }
-
-    function executePrint(mode) {
-      document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
-
-      if (mode === 'treino') {
-        document.body.classList.add('print-treino');
-      } else if (mode === 'dieta') {
-        document.body.classList.add('print-dieta');
-      } else {
-        document.body.classList.add('print-both');
-      }
-
-      closePrintModal();
-      setTimeout(() => {
-        window.print();
-      }, 150);
-    }
-
-    function resetToDefault() {
-      if (activeTab === 'treino') {
-        if (confirm("Deseja restaurar o TREINO deste aluno para o padrão original?")) {
-          routineData = JSON.parse(JSON.stringify(initialRoutine));
-          loadsData = {};
-          persistCurrentStudentData();
-          renderWorkout();
+        function renderAcademias() {
+            const tbody = document.getElementById('lista-academias');
+            if (mockData.academias.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-500">Nenhuma academia cadastrada.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = mockData.academias.map(a => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2 font-medium">${a.nome}</td>
+                    <td class="p-2">${a.cnpj}</td>
+                    <td class="p-2">${a.email}</td>
+                    <td class="p-2">${a.telefone || '-'}</td>
+                </tr>
+            `).join('');
         }
-      } else {
-        if (confirm("Deseja restaurar a DIETA deste aluno para o padrão original fornecido?")) {
-          dietData = JSON.parse(JSON.stringify(initialDiet));
-          persistCurrentStudentData();
-          renderDiet();
+
+        // -------------------------------------------------------------
+        // REGRA 2: ACADEMIA (Cadastrar/Atualizar/Excluir Alunos, Treinos e Dietas)
+        // -------------------------------------------------------------
+        function handleCadastrarAluno(e) {
+            e.preventDefault();
+            const id = document.getElementById('aluno-id').value;
+            const nome = document.getElementById('aluno-nome').value;
+            const email = document.getElementById('aluno-email').value;
+            const telefone = document.getElementById('aluno-telefone').value;
+
+            if (id) {
+                const aluno = mockData.alunos.find(a => a.id === id);
+                if (aluno) {
+                    aluno.nome = nome;
+                    aluno.email = email;
+                    aluno.telefone = telefone;
+                }
+            } else {
+                mockData.alunos.push({ id: Date.now().toString(), nome, email, telefone, academia_id: '1' });
+            }
+            resetAlunoForm();
+            renderAlunos();
+            populateSelectAlunos();
         }
-      }
-    }
-  </script>
+
+        function editarAluno(id) {
+            const aluno = mockData.alunos.find(a => a.id === id);
+            if (!aluno) return;
+            document.getElementById('aluno-id').value = aluno.id;
+            document.getElementById('aluno-nome').value = aluno.nome;
+            document.getElementById('aluno-email').value = aluno.email;
+            document.getElementById('aluno-telefone').value = aluno.telefone;
+        }
+
+        function excluirAluno(id) {
+            if (confirm('Deseja realmente excluir este aluno?')) {
+                mockData.alunos = mockData.alunos.filter(a => a.id !== id);
+                renderAlunos();
+                populateSelectAlunos();
+            }
+        }
+
+        function resetAlunoForm() {
+            document.getElementById('aluno-id').value = '';
+            document.getElementById('form-aluno').reset();
+        }
+
+        function renderAlunos() {
+            const tbody = document.getElementById('lista-alunos');
+            if (mockData.alunos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-500">Nenhum aluno encontrado.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = mockData.alunos.map(a => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2 font-medium">${a.nome}</td>
+                    <td class="p-2">${a.email}</td>
+                    <td class="p-2">${a.telefone || '-'}</td>
+                    <td class="p-2 text-right space-x-2 no-print">
+                        <button onclick="editarAluno('${a.id}')" class="text-blue-600 hover:underline">Editar</button>
+                        <button onclick="excluirAluno('${a.id}')" class="text-red-600 hover:underline">Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function populateSelectAlunos() {
+            const selects = [document.getElementById('treino-aluno-id'), document.getElementById('dieta-aluno-id'), document.getElementById('select-aluno-impressao')];
+            const options = mockData.alunos.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+            selects.forEach(select => {
+                if (select) select.innerHTML = '<option value="">Selecione um Aluno</option>' + options;
+            });
+        }
+
+        function carregarFichaAlunoAcademia() {
+            const alunoId = document.getElementById('select-aluno-impressao').value;
+            if (!alunoId) return alert('Selecione um aluno');
+            document.getElementById('printable-area').classList.remove('hidden');
+            carregarFichaAluno(alunoId);
+        }
+
+        // -------------------------------------------------------------
+        // REGRA 3: EXIBIÇÃO DE FICHA & PERMISSÃO DO ALUNO (Editar apenas Carga)
+        // -------------------------------------------------------------
+        function carregarFichaAluno(alunoId) {
+            const aluno = mockData.alunos.find(a => a.id === alunoId);
+            const containerTreinos = document.getElementById('container-treinos');
+            const containerDietas = document.getElementById('container-dietas');
+
+            if (aluno) {
+                document.getElementById('ficha-aluno-nome').innerText = `Ficha do Aluno: ${aluno.nome}`;
+            }
+
+            // Carregar Treinos
+            const treinosAluno = mockData.treinos.filter(t => t.aluno_id === alunoId);
+            if (treinosAluno.length === 0) {
+                containerTreinos.innerHTML = '<p class="text-sm text-gray-500">Nenhum treino cadastrado.</p>';
+            } else {
+                containerTreinos.innerHTML = treinosAluno.map(t => `
+                    <div class="border rounded p-4 bg-gray-50">
+                        <h4 class="font-semibold text-gray-800 mb-2">${t.nome_treino}</h4>
+                        <table class="w-full text-left text-sm bg-white border rounded">
+                            <thead>
+                                <tr class="bg-gray-100 border-b">
+                                    <th class="p-2">Exercício</th>
+                                    <th class="p-2">Séries</th>
+                                    <th class="p-2">Repetições</th>
+                                    <th class="p-2">Carga (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${t.exercicios.map(ex => `
+                                    <tr class="border-b">
+                                        <td class="p-2 font-medium">${ex.nome_exercicio}</td>
+                                        <td class="p-2">${ex.series}</td>
+                                        <td class="p-2">${ex.repeticoes}</td>
+                                        <td class="p-2">
+                                            ${currentRole === 'aluno' ? `
+                                                <input type="number" value="${ex.carga}" step="0.5" 
+                                                    onchange="atualizarCarga('${t.id}', '${ex.id}', this.value)"
+                                                    class="w-20 border rounded p-1 text-center font-bold text-blue-600 no-print">
+                                                <span class="hidden print:inline">${ex.carga} kg</span>
+                                            ` : `
+                                                <span class="font-bold text-gray-700">${ex.carga} kg</span>
+                                            `}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('');
+            }
+
+            // Carregar Dietas
+            const dietasAluno = mockData.dietas.filter(d => d.aluno_id === alunoId);
+            if (dietasAluno.length === 0) {
+                containerDietas.innerHTML = '<p class="text-sm text-gray-500">Nenhuma dieta cadastrada.</p>';
+            } else {
+                containerDietas.innerHTML = dietasAluno.map(d => `
+                    <div class="border rounded p-4 bg-gray-50">
+                        <h4 class="font-semibold text-gray-800 mb-2">${d.titulo}</h4>
+                        <table class="w-full text-left text-sm bg-white border rounded">
+                            <thead>
+                                <tr class="bg-gray-100 border-b">
+                                    <th class="p-2">Horário</th>
+                                    <th class="p-2">Refeição</th>
+                                    <th class="p-2">Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${d.itens.map(item => `
+                                    <tr class="border-b">
+                                        <td class="p-2 font-medium">${item.horario}</td>
+                                        <td class="p-2 font-semibold">${item.refeicao}</td>
+                                        <td class="p-2">${item.descricao}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Permissão exclusiva do Aluno: Ajustar carga do próprio treino
+        function atualizarCarga(treinoId, exercicioId, novaCarga) {
+            const treino = mockData.treinos.find(t => t.id === treinoId);
+            if (treino) {
+                const exercicio = treino.exercicios.find(e => e.id === exercicioId);
+                if (exercicio) {
+                    exercicio.carga = parseFloat(novaCarga) || 0;
+                    console.log(`Carga atualizada: ${exercicio.nome_exercicio} -> ${exercicio.carga} kg`);
+                }
+            }
+        }
+    </script>
 </body>
 </html>
