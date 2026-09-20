@@ -79,6 +79,17 @@
     .header-actions {
       display: flex;
       gap: 8px;
+      align-items: center;
+    }
+
+    .user-badge {
+      font-size: 11px;
+      background: var(--card-item);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      color: var(--accent-blue);
+      font-weight: 700;
     }
 
     .btn-action {
@@ -94,6 +105,17 @@
       align-items: center;
       gap: 6px;
       white-space: nowrap;
+    }
+
+    .btn-admin {
+      background-color: #8b5cf6;
+      color: #fff;
+    }
+
+    .btn-logout {
+      background-color: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
     }
 
     .btn-reset {
@@ -421,7 +443,7 @@
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(0,0,0,0.8);
+      background-color: rgba(0,0,0,0.85);
       backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
@@ -533,6 +555,16 @@
     .btn-print-option:hover {
       border-color: var(--accent-neon);
       background-color: rgba(204, 255, 0, 0.1);
+    }
+
+    /* Esconder colunas dinamicamente para o Aluno */
+    body.is-aluno .actions-cell,
+    body.is-aluno .btn-add-ex,
+    body.is-aluno .btn-add-meal,
+    body.is-aluno .btn-student-add,
+    body.is-aluno .btn-student-edit,
+    body.is-aluno .btn-reset {
+      display: none !important;
     }
 
     /* ADAPTAÇÃO MOBILE (< 768px) */
@@ -924,6 +956,10 @@
     </div>
 
     <div class="header-actions">
+      <span id="user-display" class="user-badge" style="display:none;"></span>
+      <button id="btn-sysadmin-panel" class="btn-action btn-admin" style="display:none;" onclick="openSysAdminModal()">
+        ⚙️ SysAdmin
+      </button>
       <button class="btn-action btn-reset" onclick="resetToDefault()">
         🔄 Restaurar Padrão
       </button>
@@ -931,11 +967,21 @@
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"></path></svg>
         PDF / Imprimir
       </button>
+      <button class="btn-action btn-logout" onclick="handleLogout()">
+        Sair
+      </button>
     </div>
   </header>
 
-  <!-- Barra de Gestão de Alunos -->
-  <div class="student-bar no-print">
+  <!-- Barra de Gestão de Alunos (Filtro por Academia se SysAdmin) -->
+  <div class="student-bar no-print" id="student-bar">
+    <div class="student-select-group" id="sysadmin-gym-filter" style="display:none; max-width: 250px;">
+      <label>🏢 Academia:</label>
+      <select id="gym-select" class="student-select" onchange="switchGymFilter(this.value)">
+        <!-- Preenchido dinamicamente para SysAdmin -->
+      </select>
+    </div>
+
     <div class="student-select-group">
       <label for="student-select">👤 Aluno:</label>
       <select id="student-select" class="student-select" onchange="switchStudent(this.value)">
@@ -992,13 +1038,60 @@
   </div>
 
   <!-- Container Treinos -->
-  <div class="table-container" id="workout-container">
-    <!-- Renderizado via JS -->
-  </div>
+  <div class="table-container" id="workout-container"></div>
 
   <!-- Container Dieta -->
-  <div class="table-container" id="diet-container" style="display: none;">
-    <!-- Renderizado via JS -->
+  <div class="table-container" id="diet-container" style="display: none;"></div>
+
+  <!-- Modal: Login Ajustado -->
+  <div class="modal-overlay active" id="login-modal">
+    <div class="modal-card">
+      <h3>Acesso ao Sistema</h3>
+      <div class="form-group">
+        <label>LOGIN</label>
+        <input type="text" id="login-user" class="form-control" placeholder="Digite seu login ou e-mail">
+      </div>
+      <div class="form-group">
+        <label>SENHA</label>
+        <input type="password" id="login-password" class="form-control" placeholder="Digite sua senha">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-modal btn-modal-save" onclick="handleLogin()">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Cadastrar Gestor/Academia (Ajustado) -->
+  <div class="modal-overlay" id="sysadmin-modal">
+    <div class="modal-card">
+      <h3>Cadastrar Gestor</h3>
+      <div class="form-group">
+        <label>Academia</label>
+        <select id="sys-gym-select" class="form-control" onchange="toggleNewGymInput(this.value)">
+          <!-- Preenchido dinamicamente -->
+        </select>
+      </div>
+      <div class="form-group" id="sys-new-gym-group" style="display: none;">
+        <label>Nome da Nova Academia</label>
+        <input type="text" id="sys-gym-name" class="form-control" placeholder="Ex: Academia FitPower">
+      </div>
+      <div class="form-group">
+        <label>Nome do Gestor</label>
+        <input type="text" id="sys-manager-name" class="form-control" placeholder="Ex: Carlos Oliveira">
+      </div>
+      <div class="form-group">
+        <label>Login do Gestor</label>
+        <input type="text" id="sys-manager-login" class="form-control" placeholder="Ex: gestor.fitpower">
+      </div>
+      <div class="form-group">
+        <label>Senha do Gestor</label>
+        <input type="password" id="sys-manager-password" class="form-control" placeholder="Senha inicial">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-modal btn-modal-cancel" onclick="closeSysAdminModal()">Cancelar</button>
+        <button class="btn-modal btn-modal-save" onclick="saveGymAndManager()">Cadastrar Gestor</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: Cadastrar / Editar Aluno -->
@@ -1014,6 +1107,16 @@
       <div class="form-group">
         <label>Telefone (DDD + Número)</label>
         <input type="tel" id="student-phone" class="form-control" placeholder="(19) 98386-8028" oninput="handlePhoneInput(event)">
+      </div>
+
+      <div class="form-group" id="student-login-group">
+        <label>Login de Acesso do Aluno</label>
+        <input type="text" id="student-login" class="form-control" placeholder="Ex: joao.silva">
+      </div>
+
+      <div class="form-group" id="student-password-group">
+        <label>Senha de Acesso do Aluno</label>
+        <input type="password" id="student-password" class="form-control" placeholder="Defina a senha inicial">
       </div>
 
       <div class="modal-buttons">
@@ -1119,7 +1222,11 @@
     const SUPABASE_KEY = "sb_publishable_SyFTcgbc055sTCpLMHOSKA_6Q-gHj02";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* Estrutura Base de Treino */
+    /* Variáveis Globais de Sessão e Perfis */
+    let currentUser = null;
+    let selectedGymId = null;
+
+    /* Estruturas Base de Treino e Dieta */
     const initialRoutine = {
       seg: {
         title: "Segunda",
@@ -1192,7 +1299,6 @@
       }
     };
 
-    /* Estrutura Base de Dieta Separada por Todos os Dias da Semana */
     const initialDiet = {
       seg: {
         title: "Segunda-Feira",
@@ -1310,8 +1416,10 @@
     let editingState = { dayKey: null, exIndex: null };
     let editingDietState = { dayKey: null, mealIndex: null };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initStudents();
+    /* Resetar classes de impressão ao fechar a pré-visualização */
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
+      document.body.classList.add(activeTab === 'treino' ? 'print-treino' : 'print-dieta');
     });
 
     /* ================= MÁSCARA TELEFONE ================= */
@@ -1332,9 +1440,236 @@
       e.target.value = maskPhone(e.target.value);
     }
 
+    /* ================= AUTENTICAÇÃO E PERFIS ================= */
+    async function handleLogin() {
+      const loginVal = document.getElementById('login-user').value.trim();
+      const passVal = document.getElementById('login-password').value.trim();
+
+      if (!loginVal || !passVal) {
+        alert("Informe o login e a senha.");
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('usuarios')
+        .select('*')
+        .eq('login', loginVal)
+        .eq('senha_hash', passVal)
+        .single();
+
+      if (error || !data) {
+        alert("Login ou senha inválidos!");
+        return;
+      }
+
+      currentUser = data;
+      document.getElementById('login-modal').classList.remove('active');
+      setupUserEnvironment();
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      document.body.className = "print-treino";
+      document.getElementById('user-display').style.display = 'none';
+      document.getElementById('btn-sysadmin-panel').style.display = 'none';
+      document.getElementById('sysadmin-gym-filter').style.display = 'none';
+      document.getElementById('login-modal').classList.add('active');
+      document.getElementById('login-user').value = '';
+      document.getElementById('login-password').value = '';
+    }
+
+    async function setupUserEnvironment() {
+      const userDisplay = document.getElementById('user-display');
+      userDisplay.style.display = 'inline-block';
+      userDisplay.innerText = `${currentUser.nome} (${(currentUser.perfil || '').toUpperCase()})`;
+
+      const perfil = (currentUser.perfil || '').toLowerCase();
+
+      if (perfil === 'aluno' || perfil === 'cliente') {
+        document.body.classList.add('is-aluno');
+        document.getElementById('student-bar').style.display = 'none';
+        currentStudentId = currentUser.aluno_id;
+        await loadStudentDataDirectly(currentStudentId);
+      } else if (perfil === 'gestor' || perfil === 'operador') {
+        document.body.classList.remove('is-aluno');
+        document.getElementById('student-bar').style.display = 'flex';
+        document.getElementById('sysadmin-gym-filter').style.display = 'none';
+        selectedGymId = currentUser.academia_id;
+        await fetchStudentsForGym(selectedGymId);
+      } else if (perfil === 'sysadmin' || perfil === 'admin') {
+        document.body.classList.remove('is-aluno');
+        document.getElementById('student-bar').style.display = 'flex';
+        document.getElementById('btn-sysadmin-panel').style.display = 'flex';
+        document.getElementById('sysadmin-gym-filter').style.display = 'flex';
+        await loadGymsForSysAdmin();
+      }
+    }
+
+    async function loadGymsForSysAdmin() {
+      const { data } = await supabaseClient.from('academias').select('*').order('nome');
+      const gymSelect = document.getElementById('gym-select');
+      gymSelect.innerHTML = '<option value="all">Todas as Academias</option>';
+      (data || []).forEach(g => {
+        gymSelect.innerHTML += `<option value="${g.id}">${g.nome}</option>`;
+      });
+      fetchStudentsForGym('all');
+    }
+
+    function switchGymFilter(gymId) {
+      selectedGymId = gymId;
+      fetchStudentsForGym(gymId);
+    }
+
+    async function fetchStudentsForGym(gymId) {
+      let query = supabaseClient.from('alunos').select('*').order('nome');
+      if (gymId && gymId !== 'all') {
+        query = query.eq('academia_id', gymId);
+      }
+
+      const { data, error } = await query;
+      students = data || [];
+
+      if (students.length > 0) {
+        currentStudentId = students[0].id;
+        renderStudentSelect();
+        loadStudentData(currentStudentId);
+      } else {
+        currentStudentId = null;
+        renderStudentSelect();
+        document.getElementById('workout-container').innerHTML = '<div style="color:var(--text-muted); padding:20px; text-align:center;">Nenhum aluno cadastrado nesta academia.</div>';
+        document.getElementById('diet-container').innerHTML = '';
+      }
+    }
+
+    async function loadStudentDataDirectly(studentId) {
+      const { data } = await supabaseClient.from('alunos').select('*').eq('id', studentId).single();
+      if (data) {
+        students = [data];
+        loadStudentData(studentId);
+        updatePrintHeaderInfo();
+      }
+    }
+
+    /* ================= PAINEL SYSADMIN ================= */
+    async function openSysAdminModal() {
+      await populateSysAdminGymSelect();
+      document.getElementById('sysadmin-modal').classList.add('active');
+    }
+
+    async function populateSysAdminGymSelect() {
+      const select = document.getElementById('sys-gym-select');
+      select.innerHTML = '<option value="new">+ Cadastrar Nova Academia</option>';
+
+      const { data } = await supabaseClient.from('academias').select('*').order('nome');
+      if (data && data.length > 0) {
+        data.forEach(g => {
+          select.innerHTML += `<option value="${g.id}">${g.nome}</option>`;
+        });
+      }
+
+      document.getElementById('sys-new-gym-group').style.display = 'block';
+      document.getElementById('sys-gym-name').value = '';
+    }
+
+    function toggleNewGymInput(val) {
+      const newGymGroup = document.getElementById('sys-new-gym-group');
+      if (val === 'new') {
+        newGymGroup.style.display = 'block';
+      } else {
+        newGymGroup.style.display = 'none';
+      }
+    }
+
+    function closeSysAdminModal() {
+      document.getElementById('sysadmin-modal').classList.remove('active');
+    }
+
+    async function saveGymAndManager() {
+      const gymSelectVal = document.getElementById('sys-gym-select').value;
+      const gymName = document.getElementById('sys-gym-name').value.trim();
+      const managerName = document.getElementById('sys-manager-name').value.trim();
+      const managerLogin = document.getElementById('sys-manager-login').value.trim();
+      const managerPass = document.getElementById('sys-manager-password').value.trim();
+
+      if (!managerName || !managerLogin || !managerPass) {
+        alert("Preencha todos os campos do Gestor!");
+        return;
+      }
+
+      let gymId = null;
+
+      if (gymSelectVal === 'new') {
+        if (!gymName) {
+          alert("Informe o nome da nova academia!");
+          return;
+        }
+
+        // Checar se já existe academia com esse nome
+        const { data: existingGym } = await supabaseClient
+          .from('academias')
+          .select('id')
+          .ilike('nome', gymName)
+          .maybeSingle();
+
+        if (existingGym) {
+          gymId = existingGym.id;
+        } else {
+          // Cadastrar Nova Academia
+          const { data: gymData, error: gymErr } = await supabaseClient
+            .from('academias')
+            .insert([{ nome: gymName }])
+            .select();
+
+          if (gymErr || !gymData || gymData.length === 0) {
+            alert("Erro ao cadastrar academia: " + (gymErr ? gymErr.message : ""));
+            return;
+          }
+          gymId = gymData[0].id;
+        }
+      } else {
+        gymId = gymSelectVal;
+      }
+
+      // Verificar se login já existe
+      const { data: existingUser } = await supabaseClient
+        .from('usuarios')
+        .select('id')
+        .eq('login', managerLogin)
+        .maybeSingle();
+
+      if (existingUser) {
+        alert("O login informado já está em uso por outro usuário!");
+        return;
+      }
+
+      // Cadastrar Gestor na Tabela 'usuarios'
+      const { error: userErr } = await supabaseClient
+        .from('usuarios')
+        .insert([{
+          nome: managerName,
+          login: managerLogin,
+          senha_hash: managerPass,
+          perfil: 'gestor',
+          academia_id: gymId
+        }]);
+
+      if (userErr) {
+        alert("Erro ao cadastrar gestor na tabela de usuários: " + userErr.message);
+        return;
+      }
+
+      alert("Gestor cadastrado com sucesso!");
+      closeSysAdminModal();
+      const perfil = (currentUser?.perfil || '').toLowerCase();
+      if (perfil === 'sysadmin' || perfil === 'admin') loadGymsForSysAdmin();
+    }
+
     /* ================= TROCA DE ABAS PRINCIPAIS ================= */
     function switchMainTab(tab) {
       activeTab = tab;
+      document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
+      document.body.classList.add(tab === 'treino' ? 'print-treino' : 'print-dieta');
+
       const btnTreino = document.getElementById('tab-btn-treino');
       const btnDieta = document.getElementById('tab-btn-dieta');
       const workoutControls = document.getElementById('workout-controls');
@@ -1362,48 +1697,7 @@
       }
     }
 
-    /* ================= GESTÃO E PERSISTÊNCIA NO SUPABASE ================= */
-    async function initStudents() {
-      try {
-        const { data, error } = await supabaseClient
-          .from('alunos')
-          .select('*')
-          .order('nome', { ascending: true });
-
-        if (error) {
-          console.error("Erro ao buscar alunos do Supabase:", error);
-          return;
-        }
-
-        students = data || [];
-
-        if (students.length === 0) {
-          const { data: newStd, error: insertError } = await supabaseClient
-            .from('alunos')
-            .insert([{
-              nome: 'Aluno Exemplo',
-              telefone: '(19) 98386-8028',
-              rotina_data: initialRoutine,
-              dieta_data: initialDiet,
-              cargas_data: {}
-            }])
-            .select();
-
-          if (!insertError && newStd && newStd.length > 0) {
-            students.push(newStd[0]);
-          }
-        }
-
-        if (students.length > 0) {
-          currentStudentId = students[0].id;
-          renderStudentSelect();
-          loadStudentData(currentStudentId);
-        }
-      } catch (err) {
-        console.error("Falha na inicialização:", err);
-      }
-    }
-
+    /* ================= GESTÃO DE ALUNOS ================= */
     function renderStudentSelect() {
       const select = document.getElementById('student-select');
       select.innerHTML = '';
@@ -1443,9 +1737,13 @@
       const title = document.getElementById('student-modal-title');
       const nameInput = document.getElementById('student-name');
       const phoneInput = document.getElementById('student-phone');
+      const loginGroup = document.getElementById('student-login-group');
+      const passGroup = document.getElementById('student-password-group');
 
       if (studentId) {
         title.innerText = "Editar Dados do Aluno";
+        if (loginGroup) loginGroup.style.display = 'none';
+        if (passGroup) passGroup.style.display = 'none';
         const std = students.find(s => s.id === studentId);
         if (std) {
           nameInput.value = std.nome;
@@ -1453,8 +1751,12 @@
         }
       } else {
         title.innerText = "Cadastrar Novo Aluno";
+        if (loginGroup) loginGroup.style.display = 'block';
+        if (passGroup) passGroup.style.display = 'block';
         nameInput.value = '';
         phoneInput.value = '';
+        document.getElementById('student-login').value = '';
+        document.getElementById('student-password').value = '123456';
       }
 
       modal.classList.add('active');
@@ -1467,47 +1769,128 @@
     async function saveStudentModal() {
       const name = document.getElementById('student-name').value.trim();
       const phone = document.getElementById('student-phone').value.trim();
+      const login = document.getElementById('student-login').value.trim();
+      const pass = document.getElementById('student-password').value.trim();
       const cleanPhone = phone.replace(/\D/g, "");
 
       if (!name) { alert("Por favor, preencha o Nome Completo do aluno."); return; }
       if (cleanPhone.length < 10 || cleanPhone.length > 11) { alert("Número de telefone inválido!"); return; }
 
+      const userPerfil = (currentUser.perfil || '').toLowerCase();
+      let targetAcademiaId = (userPerfil === 'gestor' || userPerfil === 'operador') 
+        ? currentUser.academia_id 
+        : (selectedGymId !== 'all' ? selectedGymId : null);
+
       if (editingStudentId) {
+        // Verificar se já existe outro aluno com o mesmo nome na mesma academia
+        let checkQuery = supabaseClient
+          .from('alunos')
+          .select('id')
+          .ilike('nome', name)
+          .neq('id', editingStudentId);
+
+        if (targetAcademiaId) {
+          checkQuery = checkQuery.eq('academia_id', targetAcademiaId);
+        }
+
+        const { data: dupStudent } = await checkQuery;
+        if (dupStudent && dupStudent.length > 0) {
+          alert("Já existe outro aluno cadastrado com este nome nesta academia!");
+          return;
+        }
+
         const { error } = await supabaseClient
           .from('alunos')
           .update({ nome: name, telefone: phone })
           .eq('id', editingStudentId);
 
-        if (!error) {
-          const index = students.findIndex(s => s.id === editingStudentId);
-          if (index !== -1) {
-            students[index].nome = name;
-            students[index].telefone = phone;
-          }
-        } else {
-          alert("Erro ao atualizar o aluno.");
+        if (error) {
+          alert("Erro ao atualizar dados do aluno: " + error.message);
           return;
         }
+
+        const index = students.findIndex(s => s.id === editingStudentId);
+        if (index !== -1) {
+          students[index].nome = name;
+          students[index].telefone = phone;
+        }
       } else {
-        const { data, error } = await supabaseClient
+        if (!login) { alert("Por favor, preencha o Login de Acesso do aluno."); return; }
+
+        // 1. Validar duplicidade de nome na mesma academia
+        let dupQuery = supabaseClient
+          .from('alunos')
+          .select('id')
+          .ilike('nome', name);
+
+        if (targetAcademiaId) {
+          dupQuery = dupQuery.eq('academia_id', targetAcademiaId);
+        }
+
+        const { data: existingStudent } = await dupQuery;
+        if (existingStudent && existingStudent.length > 0) {
+          alert("Já existe um aluno cadastrado com este nome nesta academia!");
+          return;
+        }
+
+        // 2. Validar duplicidade do login em 'usuarios'
+        const { data: existingUser } = await supabaseClient
+          .from('usuarios')
+          .select('id')
+          .eq('login', login)
+          .maybeSingle();
+
+        if (existingUser) {
+          alert("O login de acesso informado já está em uso por outro usuário!");
+          return;
+        }
+
+        // 3. Inserir Aluno em 'alunos'
+        const { data: newStd, error: stdErr } = await supabaseClient
           .from('alunos')
           .insert([{
             nome: name,
             telefone: phone,
+            academia_id: targetAcademiaId,
             rotina_data: initialRoutine,
             dieta_data: initialDiet,
             cargas_data: {}
           }])
           .select();
 
-        if (!error && data && data.length > 0) {
-          students.push(data[0]);
-          currentStudentId = data[0].id;
-          loadStudentData(currentStudentId);
-        } else {
-          alert("Erro ao cadastrar novo aluno.");
+        if (stdErr || !newStd || newStd.length === 0) {
+          alert("Erro ao cadastrar aluno: " + (stdErr ? stdErr.message : ""));
           return;
         }
+
+        const createdStudent = newStd[0];
+
+        // 4. Inserir Usuário Aluno na Tabela 'usuarios'
+        const { error: userErr } = await supabaseClient
+          .from('usuarios')
+          .insert([{
+            nome: name,
+            login: login,
+            senha_hash: pass || '123456',
+            perfil: 'aluno',
+            academia_id: targetAcademiaId,
+            aluno_id: createdStudent.id
+          }]);
+
+        if (userErr) {
+          // Rollback: se não conseguir inserir no banco na tabela 'usuarios', remove o registro da tabela 'alunos'
+          await supabaseClient
+            .from('alunos')
+            .delete()
+            .eq('id', createdStudent.id);
+
+          alert("Erro ao criar usuário do aluno: " + userErr.message);
+          return;
+        }
+
+        students.push(createdStudent);
+        currentStudentId = createdStudent.id;
+        loadStudentData(currentStudentId);
       }
 
       renderStudentSelect();
@@ -1553,9 +1936,7 @@
         })
         .eq('id', currentStudentId);
 
-      if (error) {
-        console.error("Erro ao salvar no Supabase:", error);
-      } else {
+      if (!error) {
         showSaveToast();
       }
     }
@@ -1673,7 +2054,7 @@
                 <th style="width:15%">Séries x Repetições</th>
                 <th style="width:12%">Descanso</th>
                 <th style="width:10%">Carga (kg)</th>
-                <th style="width:5%" class="no-print">Ações</th>
+                <th style="width:5%" class="no-print actions-cell">Ações</th>
                 <th style="width:12%">Observações</th>
               </tr>
             </thead>
@@ -1757,7 +2138,7 @@
                 <th style="width:10%">Horário</th>
                 <th style="width:22%">Refeição / Evento</th>
                 <th style="width:44%">Alimentos & Detalhes</th>
-                <th style="width:6%" class="no-print">Ações</th>
+                <th style="width:6%" class="no-print actions-cell">Ações</th>
               </tr>
             </thead>
             <tbody>
