@@ -342,6 +342,11 @@
       overflow: hidden;
     }
 
+    /* Cabeçalho do Dia no Mobile */
+    .day-header-mobile {
+      display: none;
+    }
+
     .badge-reps {
       display: inline-block;
       background-color: rgba(56, 189, 248, 0.12);
@@ -557,12 +562,10 @@
       background-color: rgba(204, 255, 0, 0.1);
     }
 
-    /* Esconder colunas dinamicamente para o Aluno */
-    body.is-aluno .actions-cell,
-    body.is-aluno .btn-add-ex,
-    body.is-aluno .btn-add-meal,
+    /* Ajuste de visibilidade para o Aluno */
     body.is-aluno .btn-student-add,
     body.is-aluno .btn-student-edit,
+    body.is-aluno #btn-student-delete,
     body.is-aluno .btn-reset {
       display: none !important;
     }
@@ -575,39 +578,58 @@
         overflow: visible;
       }
 
-      table, thead, tbody, th, td, tr { display: block; }
-      thead { display: none; }
-
-      tbody {
+      /* Cabeçalho do Dia no Mobile */
+      .day-header-mobile {
+        display: block;
         background-color: var(--card-bg);
         border: 1px solid var(--border-color);
         border-radius: 12px;
-        padding: 12px;
-        margin-bottom: 16px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
       }
 
-      .day-cell {
-        background-color: #1a2336 !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 8px;
-        padding: 10px 12px !important;
-        margin-bottom: 10px;
-        order: -1;
-      }
-
-      .day-title {
+      .day-title-mobile {
         font-family: 'Montserrat', sans-serif;
         font-weight: 800;
         font-size: 15px;
         color: var(--accent-neon);
         text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
       }
 
-      .day-focus {
+      .day-focus-mobile {
         color: var(--accent-blue);
         font-weight: 700;
         font-size: 12px;
-        margin-top: 2px;
+      }
+
+      .day-note-mobile {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background-color: #1a2336;
+        border-left: 3px solid var(--accent-blue);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
+      }
+
+      /* Oculta as células laterais repetidas no mobile para isolar a observação */
+      .day-cell, .note-cell {
+        display: none !important;
+      }
+
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+
+      tbody {
+        background-color: transparent;
+        border: none;
+        padding: 0;
+        margin-bottom: 16px;
       }
 
       tr {
@@ -655,29 +677,25 @@
         right: 8px;
       }
 
-      .note-cell, .details-cell {
+      .details-cell {
         width: 100%;
         margin-top: 6px;
         padding: 10px 12px !important;
         background-color: #1a2336 !important;
-        border-left: 3px solid var(--accent-blue) !important;
-        border-radius: 6px;
-        font-size: 12px;
-        color: var(--text-muted);
-        order: 99;
-      }
-
-      .details-cell {
         border-left: 3px solid var(--accent-green) !important;
+        border-radius: 6px;
         color: #f1f5f9;
         font-size: 12.5px;
         line-height: 1.5;
+        order: 99;
       }
     }
 
     /* ESTILO DESKTOP (> 768px) */
     @media screen and (min-width: 769px) {
       body { padding: 24px; }
+
+      .day-header-mobile { display: none !important; }
 
       table { width: 100%; border-collapse: collapse; }
 
@@ -774,7 +792,8 @@
       .main-tabs-wrapper,
       .header,
       .modal-overlay,
-      #save-status {
+      #save-status,
+      .day-header-mobile {
         display: none !important;
       }
 
@@ -874,6 +893,7 @@
       }
 
       .day-cell {
+        display: table-cell !important;
         background-color: #f8fafc !important;
         vertical-align: top !important;
         padding-top: 8px !important;
@@ -920,6 +940,7 @@
       }
 
       .note-cell, .details-cell {
+        display: table-cell !important;
         color: #334155 !important;
         font-size: 7.5pt !important;
         line-height: 1.25 !important;
@@ -973,21 +994,20 @@
     </div>
   </header>
 
-  <!-- Barra de Gestão de Alunos (Filtro por Academia se SysAdmin) -->
+  <!-- Barra de Gestão de Alunos -->
   <div class="student-bar no-print" id="student-bar">
     <div class="student-select-group" id="sysadmin-gym-filter" style="display:none; max-width: 250px;">
       <label>🏢 Academia:</label>
       <select id="gym-select" class="student-select" onchange="switchGymFilter(this.value)">
-        <!-- Preenchido dinamicamente para SysAdmin -->
       </select>
     </div>
 
     <div class="student-select-group">
       <label for="student-select">👤 Aluno:</label>
       <select id="student-select" class="student-select" onchange="switchStudent(this.value)">
-        <!-- Opções dinâmicas -->
       </select>
       <button class="btn-student-edit" title="Editar dados do aluno" onclick="editCurrentStudent()">✏️ Editar</button>
+      <button class="btn-student-edit btn-logout" id="btn-student-delete" title="Excluir aluno" onclick="deleteCurrentStudent()">🗑️ Excluir</button>
     </div>
     <button class="btn-student-add" onclick="openStudentModal(null)">+ Novo Aluno</button>
   </div>
@@ -1061,35 +1081,84 @@
     </div>
   </div>
 
-  <!-- Modal: Cadastrar Gestor/Academia (Ajustado) -->
+  <!-- Modal: Painel SysAdmin -->
   <div class="modal-overlay" id="sysadmin-modal">
+    <div class="modal-card" style="max-width: 520px; max-height: 85vh; overflow-y: auto;">
+      <h3>Painel SysAdmin</h3>
+      
+      <div style="display:flex; gap:6px; margin-bottom:14px;">
+        <button type="button" class="btn-nav active" id="sys-tab-btn-add" onclick="switchSysTab('add')">Cadastrar</button>
+        <button type="button" class="btn-nav" id="sys-tab-btn-manage" onclick="switchSysTab('manage')">Gerenciar / Excluir</button>
+      </div>
+
+      <!-- Aba 1: Cadastrar -->
+      <div id="sys-tab-add">
+        <div class="form-group">
+          <label>Academia</label>
+          <select id="sys-gym-select" class="form-control" onchange="toggleNewGymInput(this.value)">
+          </select>
+        </div>
+        <div class="form-group" id="sys-new-gym-group" style="display: none;">
+          <label>Nome da Nova Academia</label>
+          <input type="text" id="sys-gym-name" class="form-control" placeholder="Ex: Academia FitPower">
+        </div>
+        <div class="form-group">
+          <label>Nome do Gestor</label>
+          <input type="text" id="sys-manager-name" class="form-control" placeholder="Ex: Carlos Oliveira">
+        </div>
+        <div class="form-group">
+          <label>Login do Gestor</label>
+          <input type="text" id="sys-manager-login" class="form-control" placeholder="Ex: gestor.fitpower">
+        </div>
+        <div class="form-group">
+          <label>Senha do Gestor</label>
+          <input type="password" id="sys-manager-password" class="form-control" placeholder="Senha inicial">
+        </div>
+        <div class="modal-buttons">
+          <button class="btn-modal btn-modal-cancel" onclick="closeSysAdminModal()">Cancelar</button>
+          <button class="btn-modal btn-modal-save" onclick="saveGymAndManager()">Cadastrar Gestor</button>
+        </div>
+      </div>
+
+      <!-- Aba 2: Gerenciar / Excluir -->
+      <div id="sys-tab-manage" style="display: none;">
+        <h4 style="font-size:12px; color:var(--accent-blue); margin-bottom:8px; text-transform:uppercase;">🏢 Academias Cadastradas</h4>
+        <div id="sys-gyms-list" style="max-height: 140px; overflow-y: auto; margin-bottom: 16px; background: var(--bg-dark); padding: 8px; border-radius: 6px; border:1px solid var(--border-color);"></div>
+
+        <h4 style="font-size:12px; color:var(--accent-blue); margin-bottom:8px; text-transform:uppercase;">👨‍💼 Gestores Cadastrados</h4>
+        <div id="sys-managers-list" style="max-height: 140px; overflow-y: auto; margin-bottom: 16px; background: var(--bg-dark); padding: 8px; border-radius: 6px; border:1px solid var(--border-color);"></div>
+
+        <div class="modal-buttons">
+          <button class="btn-modal btn-modal-cancel" onclick="closeSysAdminModal()">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Gestor -->
+  <div class="modal-overlay" id="edit-manager-modal">
     <div class="modal-card">
-      <h3>Cadastrar Gestor</h3>
-      <div class="form-group">
-        <label>Academia</label>
-        <select id="sys-gym-select" class="form-control" onchange="toggleNewGymInput(this.value)">
-          <!-- Preenchido dinamicamente -->
-        </select>
-      </div>
-      <div class="form-group" id="sys-new-gym-group" style="display: none;">
-        <label>Nome da Nova Academia</label>
-        <input type="text" id="sys-gym-name" class="form-control" placeholder="Ex: Academia FitPower">
-      </div>
+      <h3>Editar Gestor</h3>
+      <input type="hidden" id="edit-manager-id">
+      
       <div class="form-group">
         <label>Nome do Gestor</label>
-        <input type="text" id="sys-manager-name" class="form-control" placeholder="Ex: Carlos Oliveira">
+        <input type="text" id="edit-manager-name" class="form-control" placeholder="Ex: Carlos Oliveira">
       </div>
+
       <div class="form-group">
         <label>Login do Gestor</label>
-        <input type="text" id="sys-manager-login" class="form-control" placeholder="Ex: gestor.fitpower">
+        <input type="text" id="edit-manager-login" class="form-control" placeholder="Ex: gestor.fitpower">
       </div>
+
       <div class="form-group">
-        <label>Senha do Gestor</label>
-        <input type="password" id="sys-manager-password" class="form-control" placeholder="Senha inicial">
+        <label>Nova Senha (deixe em branco para manter a atual)</label>
+        <input type="password" id="edit-manager-password" class="form-control" placeholder="Digite uma nova senha ou deixe em branco">
       </div>
+
       <div class="modal-buttons">
-        <button class="btn-modal btn-modal-cancel" onclick="closeSysAdminModal()">Cancelar</button>
-        <button class="btn-modal btn-modal-save" onclick="saveGymAndManager()">Cadastrar Gestor</button>
+        <button class="btn-modal btn-modal-cancel" onclick="closeEditManagerModal()">Cancelar</button>
+        <button class="btn-modal btn-modal-save" onclick="saveEditManagerModal()">Salvar Alterações</button>
       </div>
     </div>
   </div>
@@ -1115,7 +1184,7 @@
       </div>
 
       <div class="form-group" id="student-password-group">
-        <label>Senha de Acesso do Aluno</label>
+        <label id="student-password-label">Senha de Acesso do Aluno</label>
         <input type="password" id="student-password" class="form-control" placeholder="Defina a senha inicial">
       </div>
 
@@ -1552,8 +1621,175 @@
 
     /* ================= PAINEL SYSADMIN ================= */
     async function openSysAdminModal() {
+      switchSysTab('add');
       await populateSysAdminGymSelect();
       document.getElementById('sysadmin-modal').classList.add('active');
+    }
+
+    function switchSysTab(tab) {
+      const tabAdd = document.getElementById('sys-tab-add');
+      const tabManage = document.getElementById('sys-tab-manage');
+      const btnAdd = document.getElementById('sys-tab-btn-add');
+      const btnManage = document.getElementById('sys-tab-btn-manage');
+
+      if (tab === 'add') {
+        tabAdd.style.display = 'block';
+        tabManage.style.display = 'none';
+        btnAdd.classList.add('active');
+        btnManage.classList.remove('active');
+      } else {
+        tabAdd.style.display = 'none';
+        tabManage.style.display = 'block';
+        btnAdd.classList.remove('active');
+        btnManage.classList.add('active');
+        loadSysAdminManagementLists();
+      }
+    }
+
+    async function loadSysAdminManagementLists() {
+      // Carregar Academias
+      const gymsContainer = document.getElementById('sys-gyms-list');
+      const { data: gyms } = await supabaseClient.from('academias').select('*').order('nome');
+      
+      if (!gyms || gyms.length === 0) {
+        gymsContainer.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Nenhuma academia cadastrada.</div>';
+      } else {
+        gymsContainer.innerHTML = gyms.map(g => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color); font-size:12px;">
+            <span>🏢 <strong>${g.nome}</strong></span>
+            <button class="btn-icon delete" onclick="deleteGym('${g.id}', '${g.nome}')" title="Excluir Academia">🗑️</button>
+          </div>
+        `).join('');
+      }
+
+      // Carregar Gestores
+      const managersContainer = document.getElementById('sys-managers-list');
+      const { data: managers } = await supabaseClient.from('usuarios').select('*, academias(nome)').eq('perfil', 'gestor').order('nome');
+
+      if (!managers || managers.length === 0) {
+        managersContainer.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Nenhum gestor cadastrado.</div>';
+      } else {
+        managersContainer.innerHTML = managers.map(m => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color); font-size:12px;">
+            <div>
+              <div>👤 <strong>${m.nome}</strong> (${m.login})</div>
+              <div style="font-size:10px; color:var(--text-muted);">Academia: ${m.academias?.nome || 'Não vinculada'}</div>
+            </div>
+            <div style="display:flex; gap:4px;">
+              <button class="btn-icon" onclick="openEditManagerModal('${m.id}')" title="Editar Gestor">✏️</button>
+              <button class="btn-icon delete" onclick="deleteManager('${m.id}', '${m.nome}')" title="Excluir Gestor">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function deleteGym(gymId, gymName) {
+      if (!confirm(`Tem certeza que deseja excluir a academia "${gymName}"?\nATENÇÃO: Isso também removerá os usuários, gestores e alunos vinculados a esta academia.`)) {
+        return;
+      }
+
+      await supabaseClient.from('usuarios').delete().eq('academia_id', gymId);
+      await supabaseClient.from('alunos').delete().eq('academia_id', gymId);
+      const { error } = await supabaseClient.from('academias').delete().eq('id', gymId);
+
+      if (error) {
+        alert("Erro ao excluir academia: " + error.message);
+        return;
+      }
+
+      alert("Academia excluída com sucesso!");
+      loadSysAdminManagementLists();
+      loadGymsForSysAdmin();
+    }
+
+    async function deleteManager(userId, userName) {
+      if (!confirm(`Tem certeza que deseja excluir o gestor "${userName}"?`)) {
+        return;
+      }
+
+      const { error } = await supabaseClient.from('usuarios').delete().eq('id', userId);
+
+      if (error) {
+        alert("Erro ao excluir gestor: " + error.message);
+        return;
+      }
+
+      alert("Gestor excluído com sucesso!");
+      loadSysAdminManagementLists();
+    }
+
+    /* ================= EDIÇÃO DE GESTOR ================= */
+    async function openEditManagerModal(managerId) {
+      const modal = document.getElementById('edit-manager-modal');
+      document.getElementById('edit-manager-id').value = managerId;
+      document.getElementById('edit-manager-name').value = 'Carregando...';
+      document.getElementById('edit-manager-login').value = 'Carregando...';
+      document.getElementById('edit-manager-password').value = '';
+
+      modal.classList.add('active');
+
+      const { data: m, error } = await supabaseClient
+        .from('usuarios')
+        .select('*')
+        .eq('id', managerId)
+        .single();
+
+      if (error || !m) {
+        alert("Erro ao carregar dados do gestor!");
+        closeEditManagerModal();
+        return;
+      }
+
+      document.getElementById('edit-manager-name').value = m.nome || '';
+      document.getElementById('edit-manager-login').value = m.login || '';
+    }
+
+    function closeEditManagerModal() {
+      document.getElementById('edit-manager-modal').classList.remove('active');
+    }
+
+    async function saveEditManagerModal() {
+      const id = document.getElementById('edit-manager-id').value;
+      const name = document.getElementById('edit-manager-name').value.trim();
+      const login = document.getElementById('edit-manager-login').value.trim();
+      const pass = document.getElementById('edit-manager-password').value.trim();
+
+      if (!name || !login) {
+        alert("Preencha o Nome e o Login do Gestor!");
+        return;
+      }
+
+      const { data: existingUser } = await supabaseClient
+        .from('usuarios')
+        .select('id')
+        .eq('login', login)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existingUser) {
+        alert("O login informado já está em uso por outro usuário!");
+        return;
+      }
+
+      const updateData = { nome: name, login: login };
+      if (pass) {
+        updateData.senha_hash = pass;
+      }
+
+      const { error } = await supabaseClient
+        .from('usuarios')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        alert("Erro ao atualizar gestor: " + error.message);
+        return;
+      }
+
+      alert("Gestor atualizado com sucesso!");
+      closeEditManagerModal();
+      loadSysAdminManagementLists();
     }
 
     async function populateSysAdminGymSelect() {
@@ -1604,7 +1840,6 @@
           return;
         }
 
-        // Checar se já existe academia com esse nome
         const { data: existingGym } = await supabaseClient
           .from('academias')
           .select('id')
@@ -1614,7 +1849,6 @@
         if (existingGym) {
           gymId = existingGym.id;
         } else {
-          // Cadastrar Nova Academia
           const { data: gymData, error: gymErr } = await supabaseClient
             .from('academias')
             .insert([{ nome: gymName }])
@@ -1630,7 +1864,6 @@
         gymId = gymSelectVal;
       }
 
-      // Verificar se login já existe
       const { data: existingUser } = await supabaseClient
         .from('usuarios')
         .select('id')
@@ -1642,7 +1875,6 @@
         return;
       }
 
-      // Cadastrar Gestor na Tabela 'usuarios'
       const { error: userErr } = await supabaseClient
         .from('usuarios')
         .insert([{
@@ -1731,32 +1963,81 @@
       openStudentModal(currentStudentId);
     }
 
-    function openStudentModal(studentId = null) {
+    async function deleteCurrentStudent() {
+      if (!currentStudentId) return;
+      const student = students.find(s => s.id === currentStudentId);
+      if (!student) return;
+
+      if (!confirm(`Tem certeza que deseja excluir o aluno "${student.nome}"? Esta ação removerá o aluno e seu login de acesso permanentemente.`)) {
+        return;
+      }
+
+      await supabaseClient.from('usuarios').delete().eq('aluno_id', currentStudentId);
+      const { error } = await supabaseClient.from('alunos').delete().eq('id', currentStudentId);
+
+      if (error) {
+        alert("Erro ao excluir aluno: " + error.message);
+        return;
+      }
+
+      alert("Aluno excluído com sucesso!");
+      const perfil = (currentUser?.perfil || '').toLowerCase();
+      if (perfil === 'sysadmin' || perfil === 'admin') {
+        fetchStudentsForGym(selectedGymId || 'all');
+      } else {
+        fetchStudentsForGym(currentUser.academia_id);
+      }
+    }
+
+    async function openStudentModal(studentId = null) {
       editingStudentId = studentId;
       const modal = document.getElementById('student-modal');
       const title = document.getElementById('student-modal-title');
       const nameInput = document.getElementById('student-name');
       const phoneInput = document.getElementById('student-phone');
       const loginGroup = document.getElementById('student-login-group');
+      const loginInput = document.getElementById('student-login');
       const passGroup = document.getElementById('student-password-group');
+      const passLabel = document.getElementById('student-password-label');
+      const passInput = document.getElementById('student-password');
 
       if (studentId) {
         title.innerText = "Editar Dados do Aluno";
-        if (loginGroup) loginGroup.style.display = 'none';
-        if (passGroup) passGroup.style.display = 'none';
+        if (loginGroup) loginGroup.style.display = 'block';
+        if (passGroup) passGroup.style.display = 'block';
+        passLabel.innerText = "ALTERAR SENHA (OPCIONAL)";
+        passInput.placeholder = "Digite uma nova senha ou deixe em branco";
+        passInput.value = '';
+        loginInput.value = 'Carregando...';
+
         const std = students.find(s => s.id === studentId);
         if (std) {
           nameInput.value = std.nome;
           phoneInput.value = std.telefone;
         }
+
+        // Buscar login do aluno na tabela de usuários
+        const { data: userData } = await supabaseClient
+          .from('usuarios')
+          .select('login')
+          .eq('aluno_id', studentId)
+          .maybeSingle();
+
+        if (userData && userData.login) {
+          loginInput.value = userData.login;
+        } else {
+          loginInput.value = '';
+        }
       } else {
         title.innerText = "Cadastrar Novo Aluno";
         if (loginGroup) loginGroup.style.display = 'block';
         if (passGroup) passGroup.style.display = 'block';
+        passLabel.innerText = "SENHA DE ACESSO DO ALUNO";
+        passInput.placeholder = "Defina a senha inicial";
         nameInput.value = '';
         phoneInput.value = '';
-        document.getElementById('student-login').value = '';
-        document.getElementById('student-password').value = '123456';
+        loginInput.value = '';
+        passInput.value = '123456';
       }
 
       modal.classList.add('active');
@@ -1782,7 +2063,8 @@
         : (selectedGymId !== 'all' ? selectedGymId : null);
 
       if (editingStudentId) {
-        // Verificar se já existe outro aluno com o mesmo nome na mesma academia
+        if (!login) { alert("Por favor, preencha o Login de Acesso do aluno."); return; }
+
         let checkQuery = supabaseClient
           .from('alunos')
           .select('id')
@@ -1799,6 +2081,18 @@
           return;
         }
 
+        const { data: dupUser } = await supabaseClient
+          .from('usuarios')
+          .select('id')
+          .eq('login', login)
+          .neq('aluno_id', editingStudentId)
+          .maybeSingle();
+
+        if (dupUser) {
+          alert("O login de acesso informado já está em uso por outro usuário!");
+          return;
+        }
+
         const { error } = await supabaseClient
           .from('alunos')
           .update({ nome: name, telefone: phone })
@@ -1809,6 +2103,20 @@
           return;
         }
 
+        const userUpdateData = { nome: name, login: login };
+        if (pass) {
+          userUpdateData.senha_hash = pass;
+        }
+
+        const { error: passErr } = await supabaseClient
+          .from('usuarios')
+          .update(userUpdateData)
+          .eq('aluno_id', editingStudentId);
+
+        if (passErr) {
+          alert("Erro ao atualizar login/senha do aluno: " + passErr.message);
+        }
+
         const index = students.findIndex(s => s.id === editingStudentId);
         if (index !== -1) {
           students[index].nome = name;
@@ -1817,7 +2125,6 @@
       } else {
         if (!login) { alert("Por favor, preencha o Login de Acesso do aluno."); return; }
 
-        // 1. Validar duplicidade de nome na mesma academia
         let dupQuery = supabaseClient
           .from('alunos')
           .select('id')
@@ -1833,7 +2140,6 @@
           return;
         }
 
-        // 2. Validar duplicidade do login em 'usuarios'
         const { data: existingUser } = await supabaseClient
           .from('usuarios')
           .select('id')
@@ -1845,7 +2151,6 @@
           return;
         }
 
-        // 3. Inserir Aluno em 'alunos'
         const { data: newStd, error: stdErr } = await supabaseClient
           .from('alunos')
           .insert([{
@@ -1865,7 +2170,6 @@
 
         const createdStudent = newStd[0];
 
-        // 4. Inserir Usuário Aluno na Tabela 'usuarios'
         const { error: userErr } = await supabaseClient
           .from('usuarios')
           .insert([{
@@ -1878,7 +2182,6 @@
           }]);
 
         if (userErr) {
-          // Rollback: se não conseguir inserir no banco na tabela 'usuarios', remove o registro da tabela 'alunos'
           await supabaseClient
             .from('alunos')
             .delete()
@@ -1987,6 +2290,17 @@
         const dayBlock = document.createElement('div');
         dayBlock.className = 'day-block';
 
+        // Cabeçalho do Dia isolado para telas Mobile
+        const mobileHeaderHtml = `
+          <div class="day-header-mobile">
+            <div class="day-title-mobile">
+              <span>${dayData.title}</span>
+              <span class="day-focus-mobile">${dayData.focus || ''}</span>
+            </div>
+            ${dayData.note ? `<div class="day-note-mobile">💡 ${dayData.note}</div>` : ''}
+          </div>
+        `;
+
         let rowsHtml = '';
 
         if (exCount === 0) {
@@ -2046,6 +2360,7 @@
           </tr>`;
 
         dayBlock.innerHTML = `
+          ${mobileHeaderHtml}
           <table>
             <thead>
               <tr>
@@ -2082,6 +2397,15 @@
 
         const dayBlock = document.createElement('div');
         dayBlock.className = 'day-block';
+
+        const mobileHeaderHtml = `
+          <div class="day-header-mobile">
+            <div class="day-title-mobile">
+              <span>${dayData.title}</span>
+              <span class="day-focus-mobile">${dayData.tag || ''}</span>
+            </div>
+          </div>
+        `;
 
         let rowsHtml = '';
 
@@ -2131,6 +2455,7 @@
           </tr>`;
 
         dayBlock.innerHTML = `
+          ${mobileHeaderHtml}
           <table>
             <thead>
               <tr>
