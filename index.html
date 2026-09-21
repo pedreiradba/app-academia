@@ -971,20 +971,6 @@
   <!-- Toast Notificação -->
   <div id="save-status">✓ Salvo no banco de dados!</div>
 
-  <!-- Cabeçalho de Impressão do Treino -->
-  <div class="print-header" id="workout-print-header">
-    <h2>Plano de Treino Semanal</h2>
-    <div class="print-student-info" id="print-student-label-workout">Aluno: --</div>
-    <p id="print-label-workout">Semana 1 - Todos os Dias</p>
-  </div>
-
-  <!-- Cabeçalho de Impressão da Dieta -->
-  <div class="print-header" id="diet-print-header">
-    <h2>Plano Alimentar & Dieta Semanal</h2>
-    <div class="print-student-info" id="print-student-label-diet">Aluno: --</div>
-    <p id="print-label-diet">Cronograma Geral de Dietas</p>
-  </div>
-
   <!-- Cabeçalho Principal -->
   <header class="header no-print">
     <div class="brand">
@@ -1079,8 +1065,22 @@
     </div>
   </div>
 
+  <!-- Cabeçalho de Impressão do Treino -->
+  <div class="print-header" id="workout-print-header">
+    <h2>Plano de Treino Semanal</h2>
+    <div class="print-student-info" id="print-student-label-workout">Aluno: --</div>
+    <p id="print-label-workout">Semana 1 - Todos os Dias</p>
+  </div>
+
   <!-- Container Treinos -->
   <div class="table-container" id="workout-container"></div>
+
+  <!-- Cabeçalho de Impressão da Dieta -->
+  <div class="print-header" id="diet-print-header">
+    <h2>Plano Alimentar & Dieta Semanal</h2>
+    <div class="print-student-info" id="print-student-label-diet">Aluno: --</div>
+    <p id="print-label-diet">Cronograma Geral de Dietas</p>
+  </div>
 
   <!-- Container Dieta -->
   <div class="table-container" id="diet-container" style="display: none;"></div>
@@ -2780,27 +2780,7 @@
       }
     }
 
-    /* ================= RESTAURAR E IMPRESSÃO ================= */
-    async function resetToDefault() {
-      if (!confirm("Deseja realmente restaurar os dados de treino e dieta para o padrão inicial? Todas as alterações personalizadas serão perdidas.")) {
-        return;
-      }
-
-      routineData = {
-        w1: JSON.parse(JSON.stringify(initialRoutine)),
-        w2: JSON.parse(JSON.stringify(initialRoutine)),
-        w3: JSON.parse(JSON.stringify(initialRoutine)),
-        w4: JSON.parse(JSON.stringify(initialRoutine))
-      };
-      dietData = JSON.parse(JSON.stringify(initialDiet));
-      loadsData = {};
-
-      await persistCurrentStudentData();
-      renderWorkout();
-      renderDiet();
-      alert("Fichas restauradas para o padrão com sucesso!");
-    }
-
+    /* ================= MODAL DE IMPRESSÃO ================= */
     function openPrintModal() {
       document.getElementById('print-modal').classList.add('active');
     }
@@ -2809,19 +2789,34 @@
       document.getElementById('print-modal').classList.remove('active');
     }
 
-    function executePrint(option) {
+    function executePrint(mode) {
       closePrintModal();
       document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
 
-      if (option === 'treino') {
+      if (mode === 'treino') {
         document.body.classList.add('print-treino');
-      } else if (option === 'dieta') {
+      } else if (mode === 'dieta') {
         document.body.classList.add('print-dieta');
-      } else if (option === 'both') {
+      } else if (mode === 'both') {
         document.body.classList.add('print-both');
       }
 
-      window.print();
+      setTimeout(() => {
+        window.print();
+      }, 100);
+    }
+
+    /* ================= RESTAURAR PADRÃO ================= */
+    async function resetToDefault() {
+      if (!confirm("Deseja realmente restaurar os dados padrão do aluno atual? Isso sobrescreverá as alterações.")) return;
+
+      routineData = JSON.parse(JSON.stringify(initialRoutine));
+      dietData = JSON.parse(JSON.stringify(initialDiet));
+      loadsData = {};
+
+      await persistCurrentStudentData();
+      renderWorkout();
+      renderDiet();
     }
   </script>
 </body>
