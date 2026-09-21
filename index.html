@@ -567,7 +567,10 @@
     body.is-aluno .btn-student-edit,
     body.is-aluno #btn-student-delete,
     body.is-aluno .btn-reset,
-    body.is-aluno #btn-copy-workout {
+    body.is-aluno #btn-copy-workout,
+    body.is-aluno .btn-add-ex,
+    body.is-aluno .btn-add-meal,
+    body.is-aluno .item-actions {
       display: none !important;
     }
 
@@ -796,28 +799,26 @@
         display: none !important;
       }
 
-      /* Controla a exibição das Seções de Treino e Dieta na Impressão */
-      body.print-treino #diet-print-section {
+      /* Controla visualização de Treino vs Dieta na impressão */
+      body.print-treino #diet-container,
+      body.print-treino #diet-print-header {
         display: none !important;
       }
-      body.print-treino #workout-print-section {
-        display: block !important;
-      }
 
-      body.print-dieta #workout-print-section {
+      body.print-dieta #workout-container,
+      body.print-dieta #workout-print-header {
         display: none !important;
       }
-      body.print-dieta #diet-print-section {
+
+      body.print-both #workout-print-header,
+      body.print-both #workout-container,
+      body.print-both #diet-print-header,
+      body.print-both #diet-container {
         display: block !important;
       }
 
-      body.print-both #workout-print-section {
-        display: block !important;
-      }
-
-      /* Força a Seção de Dieta a iniciar em uma nova página na impressão completa */
-      body.print-both #diet-print-section {
-        display: block !important;
+      /* Força a Dieta a começar em uma nova página na impressão completa */
+      body.print-both #diet-print-header {
         page-break-before: always !important;
         break-before: page !important;
       }
@@ -970,6 +971,20 @@
   <!-- Toast Notificação -->
   <div id="save-status">✓ Salvo no banco de dados!</div>
 
+  <!-- Cabeçalho de Impressão do Treino -->
+  <div class="print-header" id="workout-print-header">
+    <h2>Plano de Treino Semanal</h2>
+    <div class="print-student-info" id="print-student-label-workout">Aluno: --</div>
+    <p id="print-label-workout">Semana 1 - Todos os Dias</p>
+  </div>
+
+  <!-- Cabeçalho de Impressão da Dieta -->
+  <div class="print-header" id="diet-print-header">
+    <h2>Plano Alimentar & Dieta Semanal</h2>
+    <div class="print-student-info" id="print-student-label-diet">Aluno: --</div>
+    <p id="print-label-diet">Cronograma Geral de Dietas</p>
+  </div>
+
   <!-- Cabeçalho Principal -->
   <header class="header no-print">
     <div class="brand">
@@ -1064,25 +1079,11 @@
     </div>
   </div>
 
-  <!-- SEÇÃO DO PLANO DE TREINO (Cabeçalho + Tabelas) -->
-  <div id="workout-print-section">
-    <div class="print-header" id="workout-print-header">
-      <h2>Plano de Treino Semanal</h2>
-      <div class="print-student-info" id="print-student-label-workout">Aluno: --</div>
-      <p id="print-label-workout">Semana 1 - Todos os Dias</p>
-    </div>
-    <div class="table-container" id="workout-container"></div>
-  </div>
+  <!-- Container Treinos -->
+  <div class="table-container" id="workout-container"></div>
 
-  <!-- SEÇÃO DO PLANO ALIMENTAR & DIETA (Cabeçalho + Tabelas) -->
-  <div id="diet-print-section">
-    <div class="print-header" id="diet-print-header">
-      <h2>Plano Alimentar & Dieta Semanal</h2>
-      <div class="print-student-info" id="print-student-label-diet">Aluno: --</div>
-      <p id="print-label-diet">Cronograma Geral de Dietas</p>
-    </div>
-    <div class="table-container" id="diet-container" style="display: none;"></div>
-  </div>
+  <!-- Container Dieta -->
+  <div class="table-container" id="diet-container" style="display: none;"></div>
 
   <!-- Modal: Copiar Treino entre Semanas -->
   <div class="modal-overlay" id="copy-week-modal">
@@ -1527,19 +1528,6 @@
 
     let editingState = { dayKey: null, exIndex: null };
     let editingDietState = { dayKey: null, mealIndex: null };
-    let debounceTimer = null;
-    let toastTimer = null;
-
-    /* Helper para exibição do Toast de Confirmação */
-    function showSaveToast() {
-      const toast = document.getElementById('save-status');
-      if (!toast) return;
-      toast.classList.add('show');
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.classList.remove('show');
-      }, 2500);
-    }
 
     /* Função Helper para tratar de forma segura dados JSON vindos do banco */
     function parseJsonField(field, fallback) {
@@ -1705,7 +1693,7 @@
       if (students.length > 0) {
         currentStudentId = students[0].id;
         renderStudentSelect();
-        loadStudentData(currentStudentId);
+        await loadStudentData(currentStudentId);
       } else {
         currentStudentId = null;
         renderStudentSelect();
@@ -1718,673 +1706,73 @@
       const { data } = await supabaseClient.from('alunos').select('*').eq('id', studentId).single();
       if (data) {
         students = [data];
-        loadStudentData(studentId);
-        updatePrintHeaderInfo();
+        await loadStudentData(studentId);
       }
     }
 
-    function renderStudentSelect() {
-      const select = document.getElementById('student-select');
-      if (!select) return;
-      select.innerHTML = students.map(s => `<option value="${s.id}" ${s.id === currentStudentId ? 'selected' : ''}>${s.nome}</option>`).join('');
-    }
-
-    function switchStudent(studentId) {
+    /* ================= CARREGAMENTO DE DADOS DO ALUNO ================= */
+    async function loadStudentData(studentId) {
+      if (!studentId) return;
       currentStudentId = studentId;
-      loadStudentData(studentId);
-    }
 
-    function loadStudentData(studentId) {
-      const student = students.find(s => s.id === studentId);
-      if (!student) return;
+      const { data, error } = await supabaseClient
+        .from('alunos')
+        .select('*')
+        .eq('id', studentId)
+        .single();
 
-      routineData = parseJsonField(student.rotina_data, initialRoutine);
-      dietData = parseJsonField(student.dieta_data, initialDiet);
-      loadsData = parseJsonField(student.cargas_data, {});
+      if (error || !data) {
+        console.error("Erro ao carregar dados do aluno:", error);
+        return;
+      }
 
+      // Carrega rotina, dieta e cargas das colunas JSONB
+      routineData = parseJsonField(data.rotina_data, initialRoutine);
+      dietData = parseJsonField(data.dieta_data, initialDiet);
+      loadsData = parseJsonField(data.cargas_data, {});
+
+      updatePrintHeaderInfo();
       renderWorkout();
       renderDiet();
-      updatePrintHeaderInfo();
     }
 
-    function updatePrintHeaderInfo() {
-      const student = students.find(s => s.id === currentStudentId);
-      const studentName = student ? student.nome : '--';
-      const studentPhone = student ? student.telefone : '';
-      const phoneText = studentPhone ? ` | Tel: ${studentPhone}` : '';
-
-      const labelWorkoutStudent = document.getElementById('print-student-label-workout');
-      const labelDietStudent = document.getElementById('print-student-label-diet');
-      const labelWorkout = document.getElementById('print-label-workout');
-      const labelDiet = document.getElementById('print-label-diet');
-
-      if (labelWorkoutStudent) labelWorkoutStudent.innerText = `Aluno(a): ${studentName}${phoneText}`;
-      if (labelDietStudent) labelDietStudent.innerText = `Aluno(a): ${studentName}${phoneText}`;
-
-      if (labelWorkout) {
-        labelWorkout.innerText = currentDay === 'all' 
-          ? `Plano de Treino - Semana ${currentWeek} (Segunda a Domingo)`
-          : `Plano de Treino - Semana ${currentWeek} (${currentDay.toUpperCase()})`;
-      }
-
-      if (labelDiet) {
-        labelDiet.innerText = currentDietDay === 'all'
-          ? `Plano Alimentar & Dieta (Segunda a Domingo)`
-          : `Plano Alimentar & Dieta (${currentDietDay.toUpperCase()})`;
-      }
-    }
-
-    /* ================= NAVEGAÇÃO DE ABAS E SEMANAS ================= */
-    function switchMainTab(tab) {
-      activeTab = tab;
-      const btnTreino = document.getElementById('tab-btn-treino');
-      const btnDieta = document.getElementById('tab-btn-dieta');
-      const workoutSection = document.getElementById('workout-print-section');
-      const dietSection = document.getElementById('diet-print-section');
-      const workoutControls = document.getElementById('workout-controls');
-      const dietControls = document.getElementById('diet-controls');
-
-      if (tab === 'treino') {
-        btnTreino.classList.add('active');
-        btnDieta.classList.remove('active', 'active-diet');
-        workoutControls.style.display = 'flex';
-        dietControls.style.display = 'none';
-        workoutSection.style.display = 'block';
-        dietSection.style.display = 'none';
-        document.body.className = 'print-treino';
-      } else {
-        btnDieta.classList.add('active-diet');
-        btnTreino.classList.remove('active');
-        workoutControls.style.display = 'none';
-        dietControls.style.display = 'flex';
-        workoutSection.style.display = 'none';
-        dietSection.style.display = 'block';
-        document.body.className = 'print-dieta';
-      }
-    }
-
-    function setWeek(week) {
-      currentWeek = week;
-      document.querySelectorAll('.week-btn').forEach((btn, index) => {
-        btn.classList.toggle('active', index + 1 === week);
-      });
-      document.getElementById('current-week-label').innerText = week;
-      renderWorkout();
-      updatePrintHeaderInfo();
-    }
-
-    function setDay(dayKey) {
-      currentDay = dayKey;
-      document.querySelectorAll('#workout-controls .btn-day').forEach(btn => {
-        const isMatch = btn.getAttribute('onclick').includes(`'${dayKey}'`);
-        btn.classList.toggle('active', isMatch);
-      });
-      renderWorkout();
-      updatePrintHeaderInfo();
-    }
-
-    function setDietDay(dayKey) {
-      currentDietDay = dayKey;
-      document.querySelectorAll('#diet-controls .btn-diet-day').forEach(btn => {
-        const isMatch = btn.getAttribute('onclick').includes(`'${dayKey}'`);
-        btn.classList.toggle('active', isMatch);
-      });
-      renderDiet();
-      updatePrintHeaderInfo();
-    }
-
-    /* ================= RENDERIZAÇÃO DO TREINO ================= */
-    function renderWorkout() {
-      const container = document.getElementById('workout-container');
-      if (!container) return;
-
-      const weekRoutine = getRoutineForWeek(currentWeek);
-      const daysToRender = currentDay === 'all' ? DAYS_ORDER : [currentDay];
-      let html = '';
-
-      daysToRender.forEach(dayKey => {
-        const dayData = weekRoutine[dayKey] || { title: dayKey, focus: '', note: '', exercises: [] };
-        const exercises = dayData.exercises || [];
-        const isAluno = document.body.classList.contains('is-aluno');
-
-        html += `
-          <div class="day-block">
-            <div class="day-header-mobile">
-              <div class="day-title-mobile">
-                ${dayData.title || dayKey}
-                <span class="day-focus-mobile">${dayData.focus || ''}</span>
-              </div>
-              ${dayData.note ? `<div class="day-note-mobile">${dayData.note}</div>` : ''}
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:16%;">DIA/FOCO</th>
-                  <th style="width:30%;">EXERCÍCIO</th>
-                  <th style="width:15%;">SÉRIES X REPETIÇÕES</th>
-                  <th style="width:12%;">DESCANSO</th>
-                  <th style="width:10%;">CARGA (KG)</th>
-                  <th style="width:12%;">OBSERVAÇÕES</th>
-                  ${!isAluno ? '<th class="actions-cell" style="width:5%;">AÇÕES</th>' : ''}
-                </tr>
-              </thead>
-              <tbody>
-        `;
-
-        if (exercises.length === 0) {
-          html += `
-            <tr>
-              <td class="day-cell">
-                <div class="day-title">${dayData.title || dayKey}</div>
-                <div class="day-focus">${dayData.focus || ''}</div>
-              </td>
-              <td colspan="4" style="color:var(--text-muted); font-style:italic;">Nenhum exercício cadastrado para este dia.</td>
-              <td class="note-cell">${dayData.note || ''}</td>
-              ${!isAluno ? `<td class="actions-cell"><button class="btn-add-ex" onclick="openAddExerciseModal('${dayKey}')">+</button></td>` : ''}
-            </tr>
-          `;
-        } else {
-          exercises.forEach((ex, idx) => {
-            const loadKey = `w${currentWeek}_${ex.id}`;
-            const loadVal = loadsData[loadKey] || '';
-
-            html += `<tr>`;
-            if (idx === 0) {
-              html += `
-                <td class="day-cell" rowspan="${exercises.length}">
-                  <div class="day-title">${dayData.title || dayKey}</div>
-                  <div class="day-focus">${dayData.focus || ''}</div>
-                </td>
-              `;
-            }
-
-            html += `
-              <td class="ex-cell">${ex.name}</td>
-              <td class="reps-cell"><span class="badge-reps">${ex.reps}</span></td>
-              <td class="rest-cell"><span class="badge-rest">${ex.rest}</span></td>
-              <td class="carga-cell">
-                <input type="text" class="carga-input" value="${loadVal}" placeholder="0" oninput="saveLoad(${currentWeek}, '${ex.id}', this.value)">
-              </td>
-            `;
-
-            if (idx === 0) {
-              html += `<td class="note-cell" rowspan="${exercises.length}">${dayData.note || ''}</td>`;
-            }
-
-            if (!isAluno) {
-              html += `
-                <td class="actions-cell">
-                  <div class="item-actions">
-                    <button class="btn-icon" onclick="editExercise('${dayKey}', ${idx})" title="Editar">✏️</button>
-                    <button class="btn-icon delete" onclick="deleteExercise('${dayKey}', ${idx})" title="Excluir">🗑️</button>
-                  </div>
-                </td>
-              `;
-            }
-            html += `</tr>`;
-          });
-        }
-
-        html += `
-              </tbody>
-            </table>
-            ${!isAluno && exercises.length > 0 ? `<div style="padding:8px;" class="no-print"><button class="btn-add-ex" onclick="openAddExerciseModal('${dayKey}')">+ Adicionar Exercício em ${dayData.title || dayKey}</button></div>` : ''}
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
-    }
-
-    /* ================= RENDERIZAÇÃO DA DIETA ================= */
-    function renderDiet() {
-      const container = document.getElementById('diet-container');
-      if (!container) return;
-
-      const daysToRender = currentDietDay === 'all' ? DAYS_ORDER : [currentDietDay];
-      let html = '';
-
-      daysToRender.forEach(dayKey => {
-        const dayData = dietData[dayKey] || { title: dayKey, tag: '', meals: [] };
-        const meals = dayData.meals || [];
-        const isAluno = document.body.classList.contains('is-aluno');
-
-        html += `
-          <div class="day-block">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:18%;">DIA/FOCO NUTRICIONAL</th>
-                  <th style="width:10%;">HORÁRIO</th>
-                  <th style="width:24%;">REFEIÇÃO/EVENTO</th>
-                  <th style="width:42%;">ALIMENTOS & DETALHES</th>
-                  ${!isAluno ? '<th class="actions-cell" style="width:6%;">AÇÕES</th>' : ''}
-                </tr>
-              </thead>
-              <tbody>
-        `;
-
-        if (meals.length === 0) {
-          html += `
-            <tr>
-              <td class="day-cell">
-                <div class="day-title">${dayData.title || dayKey}</div>
-                <div class="diet-tag">${dayData.tag || ''}</div>
-              </td>
-              <td colspan="3" style="color:var(--text-muted); font-style:italic;">Nenhuma refeição cadastrada.</td>
-              ${!isAluno ? `<td class="actions-cell"><button class="btn-add-meal" onclick="openAddDietModal('${dayKey}')">+</button></td>` : ''}
-            </tr>
-          `;
-        } else {
-          meals.forEach((m, idx) => {
-            html += `<tr>`;
-            if (idx === 0) {
-              html += `
-                <td class="day-cell" rowspan="${meals.length}">
-                  <div class="day-title">${dayData.title || dayKey}</div>
-                  <div class="diet-tag">${dayData.tag || ''}</div>
-                </td>
-              `;
-            }
-
-            html += `
-              <td class="time-cell"><span class="badge-time">${m.time}</span></td>
-              <td class="meal-cell">${m.name}</td>
-              <td class="details-cell" style="white-space:pre-line;">${m.details}</td>
-            `;
-
-            if (!isAluno) {
-              html += `
-                <td class="actions-cell">
-                  <div class="item-actions">
-                    <button class="btn-icon" onclick="editDietMeal('${dayKey}', ${idx})" title="Editar">✏️</button>
-                    <button class="btn-icon delete" onclick="deleteDietMeal('${dayKey}', ${idx})" title="Excluir">🗑️</button>
-                  </div>
-                </td>
-              `;
-            }
-            html += `</tr>`;
-          });
-        }
-
-        html += `
-              </tbody>
-            </table>
-            ${!isAluno && meals.length > 0 ? `<div style="padding:8px;" class="no-print"><button class="btn-add-meal" onclick="openAddDietModal('${dayKey}')">+ Adicionar Refeição em ${dayData.title || dayKey}</button></div>` : ''}
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
-    }
-
-    /* ================= SALVAMENTO E DEBOUNCE ================= */
-    function saveLoad(week, exId, value) {
-      loadsData[`w${week}_${exId}`] = value;
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
-        if (!currentStudentId) return;
-        const { error } = await supabaseClient
-          .from('alunos')
-          .update({ cargas_data: loadsData })
-          .eq('id', currentStudentId);
-        
-        if (!error) showSaveToast();
-      }, 500);
-    }
-
-    async function saveStudentToSupabase(fields) {
+    async function persistCurrentStudentData() {
       if (!currentStudentId) return;
+
       const { error } = await supabaseClient
         .from('alunos')
-        .update(fields)
+        .update({
+          rotina_data: routineData,
+          dieta_data: dietData,
+          cargas_data: loadsData
+        })
         .eq('id', currentStudentId);
 
       if (error) {
-        alert("Erro ao salvar dados do aluno: " + error.message);
+        console.error("Erro ao salvar dados no Supabase:", error);
       } else {
         showSaveToast();
       }
     }
 
-    async function resetToDefault() {
-      if (!confirm("Deseja restaurar a rotina de treinos e dieta padrão deste aluno?")) return;
-      routineData = JSON.parse(JSON.stringify(initialRoutine));
-      dietData = JSON.parse(JSON.stringify(initialDiet));
-      loadsData = {};
+    let saveTimeout = null;
+    function handleLoadInput(event, week, exId) {
+      const value = event.target.value;
+      const loadKey = `w${week}_${exId}`;
+      loadsData[loadKey] = value;
 
-      await saveStudentToSupabase({
-        rotina_data: routineData,
-        dieta_data: dietData,
-        cargas_data: loadsData
-      });
-
-      renderWorkout();
-      renderDiet();
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        persistCurrentStudentData();
+      }, 500);
     }
 
-    /* ================= MODAL IMPRESSÃO ================= */
-    function openPrintModal() {
-      document.getElementById('print-modal').classList.add('active');
-    }
-
-    function closePrintModal() {
-      document.getElementById('print-modal').classList.remove('active');
-    }
-
-    function executePrint(type) {
-      closePrintModal();
-      document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
-
-      if (type === 'treino') {
-        document.body.classList.add('print-treino');
-      } else if (type === 'dieta') {
-        document.body.classList.add('print-dieta');
-      } else if (type === 'both') {
-        document.body.classList.add('print-both');
+    function showSaveToast() {
+      const toast = document.getElementById('save-status');
+      if (toast) {
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
       }
-
-      updatePrintHeaderInfo();
-      window.print();
-    }
-
-    /* ================= MODAIS CRUD ALUNOS ================= */
-    function openStudentModal(studentId = null) {
-      editingStudentId = studentId;
-      const modal = document.getElementById('student-modal');
-      const title = document.getElementById('student-modal-title');
-      
-      if (studentId) {
-        title.innerText = "Editar Aluno";
-        const student = students.find(s => s.id === studentId);
-        document.getElementById('student-name').value = student ? student.nome : '';
-        document.getElementById('student-phone').value = student ? student.telefone : '';
-        document.getElementById('student-login-group').style.display = 'none';
-        document.getElementById('student-password-group').style.display = 'none';
-      } else {
-        title.innerText = "Cadastrar Novo Aluno";
-        document.getElementById('student-name').value = '';
-        document.getElementById('student-phone').value = '';
-        document.getElementById('student-login').value = '';
-        document.getElementById('student-password').value = '';
-        document.getElementById('student-login-group').style.display = 'block';
-        document.getElementById('student-password-group').style.display = 'block';
-      }
-
-      modal.classList.add('active');
-    }
-
-    function editCurrentStudent() {
-      if (currentStudentId) openStudentModal(currentStudentId);
-    }
-
-    function closeStudentModal() {
-      document.getElementById('student-modal').classList.remove('active');
-    }
-
-    async function saveStudentModal() {
-      const name = document.getElementById('student-name').value.trim();
-      const phone = document.getElementById('student-phone').value.trim();
-
-      if (!name || !phone) {
-        alert("Preencha o Nome e o Telefone!");
-        return;
-      }
-
-      if (editingStudentId) {
-        const { error } = await supabaseClient
-          .from('alunos')
-          .update({ nome: name, telefone: phone })
-          .eq('id', editingStudentId);
-
-        if (error) {
-          alert("Erro ao atualizar aluno: " + error.message);
-          return;
-        }
-      } else {
-        const login = document.getElementById('student-login').value.trim();
-        const pass = document.getElementById('student-password').value.trim();
-
-        if (!login || !pass) {
-          alert("Informe o Login e a Senha para o aluno!");
-          return;
-        }
-
-        const academyId = selectedGymId && selectedGymId !== 'all' ? selectedGymId : currentUser.academia_id;
-
-        const { data: newStudent, error: studentError } = await supabaseClient
-          .from('alunos')
-          .insert([{
-            nome: name,
-            telefone: phone,
-            academia_id: academyId,
-            rotina_data: initialRoutine,
-            dieta_data: initialDiet,
-            cargas_data: {}
-          }])
-          .select()
-          .single();
-
-        if (studentError) {
-          alert("Erro ao cadastrar aluno: " + studentError.message);
-          return;
-        }
-
-        const { error: userError } = await supabaseClient
-          .from('usuarios')
-          .insert([{
-            nome: name,
-            login: login,
-            senha_hash: pass,
-            perfil: 'aluno',
-            academia_id: academyId,
-            aluno_id: newStudent.id
-          }]);
-
-        if (userError) {
-          alert("Aluno cadastrado, mas houve erro ao criar o login: " + userError.message);
-        }
-      }
-
-      closeStudentModal();
-      await fetchStudentsForGym(selectedGymId || currentUser?.academia_id);
-    }
-
-    async function deleteCurrentStudent() {
-      if (!currentStudentId) return;
-      const student = students.find(s => s.id === currentStudentId);
-      if (!confirm(`Tem certeza que deseja excluir o aluno "${student?.nome}"?`)) return;
-
-      await supabaseClient.from('usuarios').delete().eq('aluno_id', currentStudentId);
-      await supabaseClient.from('alunos').delete().eq('id', currentStudentId);
-
-      alert("Aluno removido com sucesso.");
-      await fetchStudentsForGym(selectedGymId || currentUser?.academia_id);
-    }
-
-    /* ================= COPIAR TREINO ENTRE SEMANAS ================= */
-    function openCopyWeekModal() {
-      document.getElementById('copy-src-week-label').innerText = `Semana ${currentWeek}`;
-      const container = document.getElementById('copy-week-options');
-      let html = '';
-
-      [1, 2, 3, 4].forEach(w => {
-        if (w !== currentWeek) {
-          html += `
-            <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" value="${w}" class="copy-target-checkbox">
-              Copiar para Semana ${w}
-            </label>
-          `;
-        }
-      });
-
-      container.innerHTML = html;
-      document.getElementById('copy-week-modal').classList.add('active');
-    }
-
-    function closeCopyWeekModal() {
-      document.getElementById('copy-week-modal').classList.remove('active');
-    }
-
-    async function executeCopyWeek() {
-      const selectedWeeks = Array.from(document.querySelectorAll('.copy-target-checkbox:checked')).map(cb => parseInt(cb.value));
-      if (selectedWeeks.length === 0) {
-        alert("Selecione ao menos uma semana de destino!");
-        return;
-      }
-
-      const srcRoutine = getRoutineForWeek(currentWeek);
-
-      selectedWeeks.forEach(targetW => {
-        setRoutineForWeek(targetW, JSON.parse(JSON.stringify(srcRoutine)));
-
-        DAYS_ORDER.forEach(dayKey => {
-          const exercises = srcRoutine[dayKey]?.exercises || [];
-          exercises.forEach(ex => {
-            const srcLoadKey = `w${currentWeek}_${ex.id}`;
-            const targetLoadKey = `w${targetW}_${ex.id}`;
-            if (loadsData[srcLoadKey] !== undefined) {
-              loadsData[targetLoadKey] = loadsData[srcLoadKey];
-            }
-          });
-        });
-      });
-
-      await saveStudentToSupabase({
-        rotina_data: routineData,
-        cargas_data: loadsData
-      });
-
-      closeCopyWeekModal();
-      renderWorkout();
-      alert("Treinos copiados com sucesso!");
-    }
-
-    /* ================= CRUD EXERCÍCIOS ================= */
-    function openAddExerciseModal(dayKey) {
-      editingState = { dayKey, exIndex: null };
-      document.getElementById('modal-title').innerText = "Adicionar Exercício";
-      document.getElementById('modal-name').value = '';
-      document.getElementById('modal-reps').value = '';
-      document.getElementById('modal-rest').value = '';
-      document.getElementById('exercise-modal').classList.add('active');
-    }
-
-    function editExercise(dayKey, index) {
-      editingState = { dayKey, exIndex: index };
-      const weekRoutine = getRoutineForWeek(currentWeek);
-      const ex = weekRoutine[dayKey].exercises[index];
-
-      document.getElementById('modal-title').innerText = "Editar Exercício";
-      document.getElementById('modal-name').value = ex.name || '';
-      document.getElementById('modal-reps').value = ex.reps || '';
-      document.getElementById('modal-rest').value = ex.rest || '';
-      document.getElementById('exercise-modal').classList.add('active');
-    }
-
-    function closeModal() {
-      document.getElementById('exercise-modal').classList.remove('active');
-    }
-
-    async function saveExerciseModal() {
-      const name = document.getElementById('modal-name').value.trim();
-      const reps = document.getElementById('modal-reps').value.trim();
-      const rest = document.getElementById('modal-rest').value.trim();
-
-      if (!name) {
-        alert("Informe o nome do exercício!");
-        return;
-      }
-
-      const weekRoutine = getRoutineForWeek(currentWeek);
-      const { dayKey, exIndex } = editingState;
-
-      if (!weekRoutine[dayKey]) {
-        weekRoutine[dayKey] = { title: dayKey, focus: '', note: '', exercises: [] };
-      }
-
-      if (exIndex === null) {
-        const newId = `${dayKey}_${Date.now()}`;
-        weekRoutine[dayKey].exercises.push({ id: newId, name, reps, rest });
-      } else {
-        weekRoutine[dayKey].exercises[exIndex].name = name;
-        weekRoutine[dayKey].exercises[exIndex].reps = reps;
-        weekRoutine[dayKey].exercises[exIndex].rest = rest;
-      }
-
-      setRoutineForWeek(currentWeek, weekRoutine);
-      await saveStudentToSupabase({ rotina_data: routineData });
-
-      closeModal();
-      renderWorkout();
-    }
-
-    async function deleteExercise(dayKey, index) {
-      if (!confirm("Tem certeza que deseja excluir este exercício?")) return;
-      const weekRoutine = getRoutineForWeek(currentWeek);
-      weekRoutine[dayKey].exercises.splice(index, 1);
-
-      setRoutineForWeek(currentWeek, weekRoutine);
-      await saveStudentToSupabase({ rotina_data: routineData });
-      renderWorkout();
-    }
-
-    /* ================= CRUD DIETA ================= */
-    function openAddDietModal(dayKey) {
-      editingDietState = { dayKey, mealIndex: null };
-      document.getElementById('diet-modal-title').innerText = "Adicionar Refeição";
-      document.getElementById('diet-modal-time').value = '';
-      document.getElementById('diet-modal-name').value = '';
-      document.getElementById('diet-modal-details').value = '';
-      document.getElementById('diet-modal').classList.add('active');
-    }
-
-    function editDietMeal(dayKey, index) {
-      editingDietState = { dayKey, mealIndex: index };
-      const m = dietData[dayKey].meals[index];
-
-      document.getElementById('diet-modal-title').innerText = "Editar Refeição";
-      document.getElementById('diet-modal-time').value = m.time || '';
-      document.getElementById('diet-modal-name').value = m.name || '';
-      document.getElementById('diet-modal-details').value = m.details || '';
-      document.getElementById('diet-modal').classList.add('active');
-    }
-
-    function closeDietModal() {
-      document.getElementById('diet-modal').classList.remove('active');
-    }
-
-    async function saveDietModal() {
-      const time = document.getElementById('diet-modal-time').value.trim();
-      const name = document.getElementById('diet-modal-name').value.trim();
-      const details = document.getElementById('diet-modal-details').value.trim();
-
-      if (!name) {
-        alert("Informe o nome da refeição!");
-        return;
-      }
-
-      const { dayKey, mealIndex } = editingDietState;
-      if (!dietData[dayKey]) dietData[dayKey] = { title: dayKey, tag: '', meals: [] };
-
-      if (mealIndex === null) {
-        dietData[dayKey].meals.push({ time, name, details });
-      } else {
-        dietData[dayKey].meals[mealIndex] = { time, name, details };
-      }
-
-      await saveStudentToSupabase({ dieta_data: dietData });
-      closeDietModal();
-      renderDiet();
-    }
-
-    async function deleteDietMeal(dayKey, index) {
-      if (!confirm("Tem certeza que deseja excluir esta refeição?")) return;
-      dietData[dayKey].meals.splice(index, 1);
-      await saveStudentToSupabase({ dieta_data: dietData });
-      renderDiet();
     }
 
     /* ================= PAINEL SYSADMIN ================= */
@@ -2451,7 +1839,9 @@
     }
 
     async function deleteGym(gymId, gymName) {
-      if (!confirm(`Tem certeza que deseja excluir a academia "${gymName}"?\nATENÇÃO: Isso também removerá os usuários e alunos vinculados a ela.`)) return;
+      if (!confirm(`Tem certeza que deseja excluir a academia "${gymName}"?\nATENÇÃO: Isso também removerá os usuários, gestores e alunos vinculados a esta academia.`)) {
+        return;
+      }
 
       await supabaseClient.from('usuarios').delete().eq('academia_id', gymId);
       await supabaseClient.from('alunos').delete().eq('academia_id', gymId);
@@ -2468,9 +1858,12 @@
     }
 
     async function deleteManager(userId, userName) {
-      if (!confirm(`Tem certeza que deseja excluir o gestor "${userName}"?`)) return;
+      if (!confirm(`Tem certeza que deseja excluir o gestor "${userName}"?`)) {
+        return;
+      }
 
       const { error } = await supabaseClient.from('usuarios').delete().eq('id', userId);
+
       if (error) {
         alert("Erro ao excluir gestor: " + error.message);
         return;
@@ -2480,12 +1873,22 @@
       loadSysAdminManagementLists();
     }
 
+    /* ================= EDIÇÃO DE GESTOR ================= */
     async function openEditManagerModal(managerId) {
       const modal = document.getElementById('edit-manager-modal');
       document.getElementById('edit-manager-id').value = managerId;
+      document.getElementById('edit-manager-name').value = 'Carregando...';
+      document.getElementById('edit-manager-login').value = 'Carregando...';
+      document.getElementById('edit-manager-password').value = '';
+
       modal.classList.add('active');
 
-      const { data: m, error } = await supabaseClient.from('usuarios').select('*').eq('id', managerId).single();
+      const { data: m, error } = await supabaseClient
+        .from('usuarios')
+        .select('*')
+        .eq('id', managerId)
+        .single();
+
       if (error || !m) {
         alert("Erro ao carregar dados do gestor!");
         closeEditManagerModal();
@@ -2511,10 +1914,28 @@
         return;
       }
 
-      const updateData = { nome: name, login: login };
-      if (pass) updateData.senha_hash = pass;
+      const { data: existingUser } = await supabaseClient
+        .from('usuarios')
+        .select('id')
+        .eq('login', login)
+        .neq('id', id)
+        .maybeSingle();
 
-      const { error } = await supabaseClient.from('usuarios').update(updateData).eq('id', id);
+      if (existingUser) {
+        alert("O login informado já está em uso por outro usuário!");
+        return;
+      }
+
+      const updateData = { nome: name, login: login };
+      if (pass) {
+        updateData.senha_hash = pass;
+      }
+
+      const { error } = await supabaseClient
+        .from('usuarios')
+        .update(updateData)
+        .eq('id', id);
+
       if (error) {
         alert("Erro ao atualizar gestor: " + error.message);
         return;
@@ -2541,7 +1962,12 @@
     }
 
     function toggleNewGymInput(val) {
-      document.getElementById('sys-new-gym-group').style.display = val === 'new' ? 'block' : 'none';
+      const newGymGroup = document.getElementById('sys-new-gym-group');
+      if (val === 'new') {
+        newGymGroup.style.display = 'block';
+      } else {
+        newGymGroup.style.display = 'none';
+      }
     }
 
     function closeSysAdminModal() {
@@ -2553,14 +1979,14 @@
       const gymName = document.getElementById('sys-gym-name').value.trim();
       const managerName = document.getElementById('sys-manager-name').value.trim();
       const managerLogin = document.getElementById('sys-manager-login').value.trim();
-      const managerPassword = document.getElementById('sys-manager-password').value.trim();
+      const managerPass = document.getElementById('sys-manager-password').value.trim();
 
-      if (!managerName || !managerLogin || !managerPassword) {
-        alert("Preencha todos os campos do gestor (Nome, Login e Senha)!");
+      if (!managerName || !managerLogin || !managerPass) {
+        alert("Preencha todos os campos do Gestor!");
         return;
       }
 
-      let academyId = gymSelectVal;
+      let gymId = null;
 
       if (gymSelectVal === 'new') {
         if (!gymName) {
@@ -2568,17 +1994,28 @@
           return;
         }
 
-        const { data: newGym, error: gymError } = await supabaseClient
+        const { data: existingGym } = await supabaseClient
           .from('academias')
-          .insert([{ nome: gymName }])
-          .select()
-          .single();
+          .select('id')
+          .ilike('nome', gymName)
+          .maybeSingle();
 
-        if (gymError) {
-          alert("Erro ao cadastrar academia: " + gymError.message);
-          return;
+        if (existingGym) {
+          gymId = existingGym.id;
+        } else {
+          const { data: gymData, error: gymErr } = await supabaseClient
+            .from('academias')
+            .insert([{ nome: gymName }])
+            .select();
+
+          if (gymErr || !gymData || gymData.length === 0) {
+            alert("Erro ao cadastrar academia: " + (gymErr ? gymErr.message : ""));
+            return;
+          }
+          gymId = gymData[0].id;
         }
-        academyId = newGym.id;
+      } else {
+        gymId = gymSelectVal;
       }
 
       const { data: existingUser } = await supabaseClient
@@ -2588,33 +2025,803 @@
         .maybeSingle();
 
       if (existingUser) {
-        alert("O login informado para o gestor já está em uso!");
+        alert("O login informado já está em uso por outro usuário!");
         return;
       }
 
-      const { error: userError } = await supabaseClient
+      const { error: userErr } = await supabaseClient
         .from('usuarios')
         .insert([{
           nome: managerName,
           login: managerLogin,
-          senha_hash: managerPassword,
+          senha_hash: managerPass,
           perfil: 'gestor',
-          academia_id: academyId
+          academia_id: gymId
         }]);
 
-      if (userError) {
-        alert("Erro ao cadastrar gestor: " + userError.message);
+      if (userErr) {
+        alert("Erro ao cadastrar gestor na tabela de usuários: " + userErr.message);
         return;
       }
 
-      alert("Gestor e Academia cadastrados com sucesso!");
-      document.getElementById('sys-gym-name').value = '';
-      document.getElementById('sys-manager-name').value = '';
-      document.getElementById('sys-manager-login').value = '';
-      document.getElementById('sys-manager-password').value = '';
-      
+      alert("Gestor cadastrado com sucesso!");
       closeSysAdminModal();
-      loadGymsForSysAdmin();
+      const perfil = (currentUser?.perfil || '').toLowerCase();
+      if (perfil === 'sysadmin' || perfil === 'admin') loadGymsForSysAdmin();
+    }
+
+    /* ================= TROCA DE ABAS PRINCIPAIS ================= */
+    function switchMainTab(tab) {
+      activeTab = tab;
+      document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
+      document.body.classList.add(tab === 'treino' ? 'print-treino' : 'print-dieta');
+
+      const btnTreino = document.getElementById('tab-btn-treino');
+      const btnDieta = document.getElementById('tab-btn-dieta');
+      const workoutControls = document.getElementById('workout-controls');
+      const dietControls = document.getElementById('diet-controls');
+      const workoutContainer = document.getElementById('workout-container');
+      const dietContainer = document.getElementById('diet-container');
+      const title = document.getElementById('app-title');
+
+      if (tab === 'treino') {
+        btnTreino.className = 'main-tab-btn active';
+        btnDieta.className = 'main-tab-btn';
+        workoutControls.style.display = 'flex';
+        dietControls.style.display = 'none';
+        workoutContainer.style.display = 'flex';
+        dietContainer.style.display = 'none';
+        title.innerText = 'Treinos';
+      } else {
+        btnTreino.className = 'main-tab-btn';
+        btnDieta.className = 'main-tab-btn active-diet';
+        workoutControls.style.display = 'none';
+        dietControls.style.display = 'flex';
+        workoutContainer.style.display = 'none';
+        dietContainer.style.display = 'flex';
+        title.innerText = 'Dieta & Nutrição';
+      }
+    }
+
+    /* ================= NAVEGAÇÃO DE SEMANAS E DIAS ================= */
+    function setWeek(w) {
+      currentWeek = w;
+      document.querySelectorAll('.week-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i + 1 === w);
+      });
+      document.getElementById('current-week-label').innerText = w;
+      renderWorkout();
+    }
+
+    function setDay(day) {
+      currentDay = day;
+      document.querySelectorAll('.btn-day').forEach(btn => {
+        const isMatch = btn.getAttribute('onclick').includes(`'${day}'`);
+        btn.classList.toggle('active', isMatch);
+      });
+      renderWorkout();
+    }
+
+    function setDietDay(day) {
+      currentDietDay = day;
+      document.querySelectorAll('.btn-diet-day').forEach(btn => {
+        const isMatch = btn.getAttribute('onclick').includes(`'${day}'`);
+        btn.classList.toggle('active', isMatch);
+      });
+      renderDiet();
+    }
+
+    /* ================= COPIAR TREINO ENTRE SEMANAS ================= */
+    function openCopyWeekModal() {
+      document.getElementById('copy-src-week-label').innerText = `Semana ${currentWeek}`;
+      const container = document.getElementById('copy-week-options');
+      container.innerHTML = '';
+
+      for (let w = 1; w <= 4; w++) {
+        if (w !== currentWeek) {
+          container.innerHTML += `
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; background: var(--bg-dark); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+              <input type="checkbox" class="copy-target-chk" value="${w}">
+              Copiar para a <strong>Semana ${w}</strong>
+            </label>
+          `;
+        }
+      }
+
+      document.getElementById('copy-week-modal').classList.add('active');
+    }
+
+    function closeCopyWeekModal() {
+      document.getElementById('copy-week-modal').classList.remove('active');
+    }
+
+    async function executeCopyWeek() {
+      const chks = document.querySelectorAll('.copy-target-chk:checked');
+      if (chks.length === 0) {
+        alert("Selecione pelo menos uma semana de destino.");
+        return;
+      }
+
+      const srcRoutine = JSON.parse(JSON.stringify(getRoutineForWeek(currentWeek)));
+
+      chks.forEach(chk => {
+        const targetW = parseInt(chk.value);
+        setRoutineForWeek(targetW, JSON.parse(JSON.stringify(srcRoutine)));
+
+        DAYS_ORDER.forEach(dayKey => {
+          const exercises = srcRoutine[dayKey]?.exercises || [];
+          exercises.forEach(ex => {
+            const srcKey = `w${currentWeek}_${ex.id}`;
+            const targetKey = `w${targetW}_${ex.id}`;
+            if (loadsData[srcKey] !== undefined) {
+              loadsData[targetKey] = loadsData[srcKey];
+            }
+          });
+        });
+      });
+
+      await persistCurrentStudentData();
+      closeCopyWeekModal();
+      renderWorkout();
+      showSaveToast();
+      alert(`Treino da Semana ${currentWeek} copiado com sucesso!`);
+    }
+
+    /* ================= GESTÃO DE ALUNOS ================= */
+    function renderStudentSelect() {
+      const select = document.getElementById('student-select');
+      select.innerHTML = '';
+      students.forEach(std => {
+        const option = document.createElement('option');
+        option.value = std.id;
+        option.textContent = `${std.nome} (${std.telefone})`;
+        if (std.id === currentStudentId) option.selected = true;
+        select.appendChild(option);
+      });
+      updatePrintHeaderInfo();
+    }
+
+    function switchStudent(studentId) {
+      currentStudentId = studentId;
+      loadStudentData(studentId);
+    }
+
+    function updatePrintHeaderInfo() {
+      const current = students.find(s => s.id === currentStudentId);
+      if (current) {
+        const labelText = `Aluno(a): ${current.nome} | Tel: ${current.telefone}`;
+        document.getElementById('print-student-label-workout').innerText = labelText;
+        document.getElementById('print-student-label-diet').innerText = labelText;
+      }
+    }
+
+    function editCurrentStudent() {
+      if (!currentStudentId) return;
+      openStudentModal(currentStudentId);
+    }
+
+    async function deleteCurrentStudent() {
+      if (!currentStudentId) return;
+      const student = students.find(s => s.id === currentStudentId);
+      if (!student) return;
+
+      if (!confirm(`Tem certeza que deseja excluir o aluno "${student.nome}"? Esta ação removerá o aluno e seu login de acesso permanentemente.`)) {
+        return;
+      }
+
+      await supabaseClient.from('usuarios').delete().eq('aluno_id', currentStudentId);
+      const { error } = await supabaseClient.from('alunos').delete().eq('id', currentStudentId);
+
+      if (error) {
+        alert("Erro ao excluir aluno: " + error.message);
+        return;
+      }
+
+      alert("Aluno excluído com sucesso!");
+      const perfil = (currentUser?.perfil || '').toLowerCase();
+      if (perfil === 'sysadmin' || perfil === 'admin') {
+        fetchStudentsForGym(selectedGymId || 'all');
+      } else {
+        fetchStudentsForGym(currentUser.academia_id);
+      }
+    }
+
+    async function openStudentModal(studentId = null) {
+      editingStudentId = studentId;
+      const modal = document.getElementById('student-modal');
+      const title = document.getElementById('student-modal-title');
+      const nameInput = document.getElementById('student-name');
+      const phoneInput = document.getElementById('student-phone');
+      const loginGroup = document.getElementById('student-login-group');
+      const loginInput = document.getElementById('student-login');
+      const passGroup = document.getElementById('student-password-group');
+      const passLabel = document.getElementById('student-password-label');
+      const passInput = document.getElementById('student-password');
+
+      if (studentId) {
+        title.innerText = "Editar Dados do Aluno";
+        if (loginGroup) loginGroup.style.display = 'block';
+        if (passGroup) passGroup.style.display = 'block';
+        passLabel.innerText = "ALTERAR SENHA (OPCIONAL)";
+        passInput.placeholder = "Digite uma nova senha ou deixe em branco";
+        passInput.value = '';
+        loginInput.value = 'Carregando...';
+
+        const std = students.find(s => s.id === studentId);
+        if (std) {
+          nameInput.value = std.nome;
+          phoneInput.value = std.telefone;
+        }
+
+        const { data: userData } = await supabaseClient
+          .from('usuarios')
+          .select('login')
+          .eq('aluno_id', studentId)
+          .maybeSingle();
+
+        if (userData && userData.login) {
+          loginInput.value = userData.login;
+        } else {
+          loginInput.value = '';
+        }
+      } else {
+        title.innerText = "Cadastrar Novo Aluno";
+        if (loginGroup) loginGroup.style.display = 'block';
+        if (passGroup) passGroup.style.display = 'block';
+        passLabel.innerText = "SENHA DE ACESSO DO ALUNO";
+        passInput.placeholder = "Defina a senha inicial";
+        nameInput.value = '';
+        phoneInput.value = '';
+        loginInput.value = '';
+        passInput.value = '123456';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeStudentModal() {
+      document.getElementById('student-modal').classList.remove('active');
+    }
+
+    async function saveStudentModal() {
+      const name = document.getElementById('student-name').value.trim();
+      const phone = document.getElementById('student-phone').value.trim();
+      const login = document.getElementById('student-login').value.trim();
+      const pass = document.getElementById('student-password').value.trim();
+      const cleanPhone = phone.replace(/\D/g, "");
+
+      if (!name) { alert("Por favor, preencha o Nome Completo do aluno."); return; }
+      if (cleanPhone.length < 10 || cleanPhone.length > 11) { alert("Número de telefone inválido!"); return; }
+
+      const userPerfil = (currentUser.perfil || '').toLowerCase();
+      let targetAcademiaId = (userPerfil === 'gestor' || userPerfil === 'operador') 
+        ? currentUser.academia_id 
+        : (selectedGymId !== 'all' ? selectedGymId : null);
+
+      if (editingStudentId) {
+        if (!login) { alert("Por favor, preencha o Login de Acesso do aluno."); return; }
+
+        let checkQuery = supabaseClient
+          .from('alunos')
+          .select('id')
+          .ilike('nome', name)
+          .neq('id', editingStudentId);
+
+        if (targetAcademiaId) {
+          checkQuery = checkQuery.eq('academia_id', targetAcademiaId);
+        }
+
+        const { data: dupStudent } = await checkQuery;
+        if (dupStudent && dupStudent.length > 0) {
+          alert("Já existe outro aluno cadastrado com este nome nesta academia!");
+          return;
+        }
+
+        const { data: dupUser } = await supabaseClient
+          .from('usuarios')
+          .select('id')
+          .eq('login', login)
+          .neq('aluno_id', editingStudentId)
+          .maybeSingle();
+
+        if (dupUser) {
+          alert("O login de acesso informado já está em uso por outro usuário!");
+          return;
+        }
+
+        const { error } = await supabaseClient
+          .from('alunos')
+          .update({ nome: name, telefone: phone })
+          .eq('id', editingStudentId);
+
+        if (error) {
+          alert("Erro ao atualizar dados do aluno: " + error.message);
+          return;
+        }
+
+        const userUpdateData = { nome: name, login: login };
+        if (pass) {
+          userUpdateData.senha_hash = pass;
+        }
+
+        const { error: passErr } = await supabaseClient
+          .from('usuarios')
+          .update(userUpdateData)
+          .eq('aluno_id', editingStudentId);
+
+        if (passErr) {
+          alert("Erro ao atualizar login/senha do aluno: " + passErr.message);
+        }
+
+        const index = students.findIndex(s => s.id === editingStudentId);
+        if (index !== -1) {
+          students[index].nome = name;
+          students[index].telefone = phone;
+        }
+      } else {
+        if (!login) { alert("Por favor, preencha o Login de Acesso do aluno."); return; }
+
+        let dupQuery = supabaseClient
+          .from('alunos')
+          .select('id')
+          .ilike('nome', name);
+
+        if (targetAcademiaId) {
+          dupQuery = dupQuery.eq('academia_id', targetAcademiaId);
+        }
+
+        const { data: existingStudent } = await dupQuery;
+        if (existingStudent && existingStudent.length > 0) {
+          alert("Já existe um aluno cadastrado com este nome nesta academia!");
+          return;
+        }
+
+        const { data: existingUser } = await supabaseClient
+          .from('usuarios')
+          .select('id')
+          .eq('login', login)
+          .maybeSingle();
+
+        if (existingUser) {
+          alert("O login de acesso informado já está em uso por outro usuário!");
+          return;
+        }
+
+        const { data: newStd, error: stdErr } = await supabaseClient
+          .from('alunos')
+          .insert([{
+            nome: name,
+            telefone: phone,
+            academia_id: targetAcademiaId,
+            rotina_data: initialRoutine,
+            dieta_data: initialDiet,
+            cargas_data: {}
+          }])
+          .select();
+
+        if (stdErr || !newStd || newStd.length === 0) {
+          alert("Erro ao cadastrar aluno: " + (stdErr ? stdErr.message : ""));
+          return;
+        }
+
+        const createdStudent = newStd[0];
+
+        const { error: userErr } = await supabaseClient
+          .from('usuarios')
+          .insert([{
+            nome: name,
+            login: login,
+            senha_hash: pass || '123456',
+            perfil: 'aluno',
+            academia_id: targetAcademiaId,
+            aluno_id: createdStudent.id
+          }]);
+
+        if (userErr) {
+          alert("Erro ao cadastrar login do aluno: " + userErr.message);
+          return;
+        }
+
+        alert("Aluno cadastrado com sucesso!");
+        closeStudentModal();
+
+        if (userPerfil === 'sysadmin' || userPerfil === 'admin') {
+          await fetchStudentsForGym(selectedGymId || 'all');
+        } else {
+          await fetchStudentsForGym(currentUser.academia_id);
+        }
+        currentStudentId = createdStudent.id;
+        renderStudentSelect();
+        await loadStudentData(currentStudentId);
+        return;
+      }
+
+      closeStudentModal();
+      renderStudentSelect();
+      updatePrintHeaderInfo();
+    }
+
+    /* ================= RENDERIZAÇÃO DE TREINOS ================= */
+    function renderWorkout() {
+      const container = document.getElementById('workout-container');
+      if (!container) return;
+
+      const weekRoutine = getRoutineForWeek(currentWeek);
+      let html = '';
+
+      const daysToRender = currentDay === 'all' ? DAYS_ORDER : [currentDay];
+
+      daysToRender.forEach(dayKey => {
+        const dayData = weekRoutine[dayKey] || { title: dayKey, focus: '', note: '', exercises: [] };
+        const exercises = dayData.exercises || [];
+
+        let blockHtml = `
+          <div class="day-block">
+            <div class="day-header-mobile">
+              <div class="day-title-mobile">
+                <span>${dayData.title}</span>
+                <span class="day-focus-mobile">${dayData.focus || ''}</span>
+              </div>
+              ${dayData.note ? `<div class="day-note-mobile">${dayData.note}</div>` : ''}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 16%;">Dia / Foco</th>
+                  <th style="width: 30%;">Exercício</th>
+                  <th style="width: 15%;">Séries x Reps</th>
+                  <th style="width: 12%;">Descanso</th>
+                  <th style="width: 10%;">Carga</th>
+                  <th style="width: 12%;">Observações</th>
+                  <th class="no-print" style="width: 5%;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        if (exercises.length === 0) {
+          blockHtml += `
+            <tr>
+              <td class="day-cell">
+                <div class="day-title">${dayData.title}</div>
+                <div class="day-focus">${dayData.focus || ''}</div>
+              </td>
+              <td colspan="5" style="color: var(--text-muted); text-align: center; padding: 16px;">Sem exercícios programados para este dia.</td>
+              <td class="actions-cell no-print"></td>
+            </tr>
+          `;
+        } else {
+          exercises.forEach((ex, idx) => {
+            const loadKey = `w${currentWeek}_${ex.id}`;
+            const currentLoad = loadsData[loadKey] || '';
+
+            blockHtml += `<tr>`;
+            if (idx === 0) {
+              blockHtml += `
+                <td class="day-cell" rowspan="${exercises.length}">
+                  <div class="day-title">${dayData.title}</div>
+                  <div class="day-focus">${dayData.focus || ''}</div>
+                </td>
+              `;
+            }
+            blockHtml += `
+              <td class="ex-cell"><strong>${ex.name}</strong></td>
+              <td class="reps-cell"><span class="badge-reps">${ex.reps}</span></td>
+              <td class="rest-cell"><span class="badge-rest">${ex.rest}</span></td>
+              <td class="carga-cell">
+                <input type="text" class="carga-input" value="${currentLoad}" placeholder="-- kg" oninput="handleLoadInput(event, ${currentWeek}, '${ex.id}')">
+              </td>
+            `;
+            if (idx === 0) {
+              blockHtml += `
+                <td class="note-cell" rowspan="${exercises.length}">
+                  ${dayData.note || ''}
+                </td>
+              `;
+            }
+            blockHtml += `
+              <td class="actions-cell no-print">
+                <div class="item-actions">
+                  <button class="btn-icon" title="Editar Exercício" onclick="openExerciseModal('${dayKey}', ${idx})">✏️</button>
+                  <button class="btn-icon delete" title="Excluir Exercício" onclick="deleteExercise('${dayKey}', ${idx})">🗑️</button>
+                </div>
+              </td>
+            </tr>`;
+          });
+        }
+
+        blockHtml += `
+              </tbody>
+            </table>
+            <div style="padding: 10px;" class="no-print">
+              <button class="btn-add-ex" onclick="openExerciseModal('${dayKey}', null)">+ Adicionar Exercício (${dayData.title})</button>
+            </div>
+          </div>
+        `;
+
+        html += blockHtml;
+      });
+
+      container.innerHTML = html;
+
+      const labelWorkout = document.getElementById('print-label-workout');
+      if (labelWorkout) {
+        const dayName = currentDay === 'all' ? 'Todos os Dias' : (weekRoutine[currentDay]?.title || currentDay);
+        labelWorkout.innerText = `Semana ${currentWeek} - ${dayName}`;
+      }
+    }
+
+    /* ================= RENDERIZAÇÃO DE DIETA ================= */
+    function renderDiet() {
+      const container = document.getElementById('diet-container');
+      if (!container) return;
+
+      let html = '';
+      const daysToRender = currentDietDay === 'all' ? DAYS_ORDER : [currentDietDay];
+
+      daysToRender.forEach(dayKey => {
+        const dayData = dietData[dayKey] || initialDiet[dayKey] || { title: dayKey, tag: '', meals: [] };
+        const meals = dayData.meals || [];
+
+        let blockHtml = `
+          <div class="day-block">
+            <div class="day-header-mobile">
+              <div class="day-title-mobile">
+                <span>${dayData.title}</span>
+                <span class="diet-tag">${dayData.tag || ''}</span>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 18%;">Dia / Meta</th>
+                  <th style="width: 10%;">Horário</th>
+                  <th style="width: 22%;">Refeição / Evento</th>
+                  <th style="width: 44%;">Alimentos e Detalhes</th>
+                  <th class="no-print" style="width: 6%;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        if (meals.length === 0) {
+          blockHtml += `
+            <tr>
+              <td class="day-cell">
+                <div class="day-title">${dayData.title}</div>
+                <div class="diet-tag">${dayData.tag || ''}</div>
+              </td>
+              <td colspan="3" style="color: var(--text-muted); text-align: center; padding: 16px;">Nenhuma refeição cadastrada para este dia.</td>
+              <td class="actions-cell no-print"></td>
+            </tr>
+          `;
+        } else {
+          meals.forEach((meal, idx) => {
+            const detailsFormatted = meal.details ? meal.details.replace(/\n/g, '<br>') : '';
+            blockHtml += `<tr>`;
+            if (idx === 0) {
+              blockHtml += `
+                <td class="day-cell" rowspan="${meals.length}">
+                  <div class="day-title">${dayData.title}</div>
+                  <div class="diet-tag">${dayData.tag || ''}</div>
+                </td>
+              `;
+            }
+            blockHtml += `
+              <td class="time-cell"><span class="badge-time">${meal.time}</span></td>
+              <td class="meal-cell">${meal.name}</td>
+              <td class="details-cell">${detailsFormatted}</td>
+              <td class="actions-cell no-print">
+                <div class="item-actions">
+                  <button class="btn-icon" title="Editar Refeição" onclick="openDietModal('${dayKey}', ${idx})">✏️</button>
+                  <button class="btn-icon delete" title="Excluir Refeição" onclick="deleteDietMeal('${dayKey}', ${idx})">🗑️</button>
+                </div>
+              </td>
+            </tr>`;
+          });
+        }
+
+        blockHtml += `
+              </tbody>
+            </table>
+            <div style="padding: 10px;" class="no-print">
+              <button class="btn-add-meal" onclick="openDietModal('${dayKey}', null)">+ Adicionar Refeição (${dayData.title})</button>
+            </div>
+          </div>
+        `;
+
+        html += blockHtml;
+      });
+
+      container.innerHTML = html;
+
+      const labelDiet = document.getElementById('print-label-diet');
+      if (labelDiet) {
+        const dayName = currentDietDay === 'all' ? 'Cronograma Geral de Dietas' : (dietData[currentDietDay]?.title || currentDietDay);
+        labelDiet.innerText = `Plano Alimentar - ${dayName}`;
+      }
+    }
+
+    /* ================= MODAL DE EXERCÍCIOS ================= */
+    function openExerciseModal(dayKey, idx = null) {
+      editingState = { dayKey, exIndex: idx };
+      const modal = document.getElementById('exercise-modal');
+      const title = document.getElementById('modal-title');
+      const nameInput = document.getElementById('modal-name');
+      const repsInput = document.getElementById('modal-reps');
+      const restInput = document.getElementById('modal-rest');
+
+      const weekRoutine = getRoutineForWeek(currentWeek);
+      const dayData = weekRoutine[dayKey];
+
+      if (idx !== null && dayData && dayData.exercises[idx]) {
+        const ex = dayData.exercises[idx];
+        title.innerText = "Editar Exercício";
+        nameInput.value = ex.name;
+        repsInput.value = ex.reps;
+        restInput.value = ex.rest;
+      } else {
+        title.innerText = `Adicionar Exercício (${dayData?.title || dayKey})`;
+        nameInput.value = '';
+        repsInput.value = '';
+        restInput.value = '';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('exercise-modal').classList.remove('active');
+    }
+
+    async function saveExerciseModal() {
+      const name = document.getElementById('modal-name').value.trim();
+      const reps = document.getElementById('modal-reps').value.trim();
+      const rest = document.getElementById('modal-rest').value.trim();
+
+      if (!name) { alert("Informe o nome do exercício."); return; }
+
+      const weekRoutine = getRoutineForWeek(currentWeek);
+      const dayKey = editingState.dayKey;
+
+      if (!weekRoutine[dayKey]) {
+        weekRoutine[dayKey] = { title: dayKey, focus: '', note: '', exercises: [] };
+      }
+
+      if (editingState.exIndex !== null) {
+        weekRoutine[dayKey].exercises[editingState.exIndex].name = name;
+        weekRoutine[dayKey].exercises[editingState.exIndex].reps = reps;
+        weekRoutine[dayKey].exercises[editingState.exIndex].rest = rest;
+      } else {
+        const newId = `${dayKey}_${Date.now().toString().slice(-4)}`;
+        weekRoutine[dayKey].exercises.push({ id: newId, name, reps, rest });
+      }
+
+      setRoutineForWeek(currentWeek, weekRoutine);
+      await persistCurrentStudentData();
+      closeModal();
+      renderWorkout();
+    }
+
+    async function deleteExercise(dayKey, idx) {
+      if (!confirm("Tem certeza que deseja excluir este exercício?")) return;
+
+      const weekRoutine = getRoutineForWeek(currentWeek);
+      if (weekRoutine[dayKey] && weekRoutine[dayKey].exercises) {
+        weekRoutine[dayKey].exercises.splice(idx, 1);
+        setRoutineForWeek(currentWeek, weekRoutine);
+        await persistCurrentStudentData();
+        renderWorkout();
+      }
+    }
+
+    /* ================= MODAL DE DIETA ================= */
+    function openDietModal(dayKey, idx = null) {
+      editingDietState = { dayKey, mealIndex: idx };
+      const modal = document.getElementById('diet-modal');
+      const title = document.getElementById('diet-modal-title');
+      const timeInput = document.getElementById('diet-modal-time');
+      const nameInput = document.getElementById('diet-modal-name');
+      const detailsInput = document.getElementById('diet-modal-details');
+
+      const dayData = dietData[dayKey] || initialDiet[dayKey] || { title: dayKey, tag: '', meals: [] };
+
+      if (idx !== null && dayData.meals && dayData.meals[idx]) {
+        const meal = dayData.meals[idx];
+        title.innerText = "Editar Refeição";
+        timeInput.value = meal.time;
+        nameInput.value = meal.name;
+        detailsInput.value = meal.details;
+      } else {
+        title.innerText = `Adicionar Refeição (${dayData.title || dayKey})`;
+        timeInput.value = '';
+        nameInput.value = '';
+        detailsInput.value = '';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeDietModal() {
+      document.getElementById('diet-modal').classList.remove('active');
+    }
+
+    async function saveDietModal() {
+      const time = document.getElementById('diet-modal-time').value.trim();
+      const name = document.getElementById('diet-modal-name').value.trim();
+      const details = document.getElementById('diet-modal-details').value.trim();
+
+      if (!name) { alert("Informe o nome da refeição."); return; }
+
+      const dayKey = editingDietState.dayKey;
+
+      if (!dietData[dayKey]) {
+        dietData[dayKey] = JSON.parse(JSON.stringify(initialDiet[dayKey] || { title: dayKey, tag: '', meals: [] }));
+      }
+
+      if (editingDietState.mealIndex !== null) {
+        dietData[dayKey].meals[editingDietState.mealIndex] = { time, name, details };
+      } else {
+        dietData[dayKey].meals.push({ time, name, details });
+      }
+
+      await persistCurrentStudentData();
+      closeDietModal();
+      renderDiet();
+    }
+
+    async function deleteDietMeal(dayKey, idx) {
+      if (!confirm("Tem certeza que deseja excluir esta refeição?")) return;
+
+      if (dietData[dayKey] && dietData[dayKey].meals) {
+        dietData[dayKey].meals.splice(idx, 1);
+        await persistCurrentStudentData();
+        renderDiet();
+      }
+    }
+
+    /* ================= RESTAURAR E IMPRESSÃO ================= */
+    async function resetToDefault() {
+      if (!confirm("Deseja realmente restaurar os dados de treino e dieta para o padrão inicial? Todas as alterações personalizadas serão perdidas.")) {
+        return;
+      }
+
+      routineData = {
+        w1: JSON.parse(JSON.stringify(initialRoutine)),
+        w2: JSON.parse(JSON.stringify(initialRoutine)),
+        w3: JSON.parse(JSON.stringify(initialRoutine)),
+        w4: JSON.parse(JSON.stringify(initialRoutine))
+      };
+      dietData = JSON.parse(JSON.stringify(initialDiet));
+      loadsData = {};
+
+      await persistCurrentStudentData();
+      renderWorkout();
+      renderDiet();
+      alert("Fichas restauradas para o padrão com sucesso!");
+    }
+
+    function openPrintModal() {
+      document.getElementById('print-modal').classList.add('active');
+    }
+
+    function closePrintModal() {
+      document.getElementById('print-modal').classList.remove('active');
+    }
+
+    function executePrint(option) {
+      closePrintModal();
+      document.body.classList.remove('print-treino', 'print-dieta', 'print-both');
+
+      if (option === 'treino') {
+        document.body.classList.add('print-treino');
+      } else if (option === 'dieta') {
+        document.body.classList.add('print-dieta');
+      } else if (option === 'both') {
+        document.body.classList.add('print-both');
+      }
+
+      window.print();
     }
   </script>
 </body>
